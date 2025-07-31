@@ -1,0 +1,185 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Yangi foydalanuvchi{% endblock %}
+{% block page_title %}Yangi foydalanuvchi yaratish{% endblock %}
+
+{% block page_actions %}
+<a href="/admin/users" class="btn btn-outline-secondary">
+    <i class="bi bi-arrow-left"></i> Orqaga
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow">
+            <div class="card-header">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="bi bi-person-plus"></i> Foydalanuvchi ma'lumotlari
+                </h6>
+            </div>
+            <div class="card-body">
+                <form method="post" action="/admin/users/create">
+                    <div class="row">
+                        <!-- Basic Information -->
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-3">Asosiy ma'lumotlar</h6>
+                            
+                            <div class="mb-3">
+                                <label for="username" class="form-label">Username *</label>
+                                <input type="text" class="form-control" id="username" name="username" 
+                                       value="{{ form_data.username if form_data else '' }}" required>
+                                <div class="form-text">Foydalanuvchi nomi (login uchun)</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Email *</label>
+                                <input type="email" class="form-control" id="email" name="email" 
+                                       value="{{ form_data.email if form_data else '' }}" required>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="password" class="form-label">Parol *</label>
+                                <input type="password" class="form-control" id="password" name="password" required>
+                                <div class="form-text">Kamida 6 ta belgi</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Personal Information -->
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-3">Shaxsiy ma'lumotlar</h6>
+                            
+                            <div class="mb-3">
+                                <label for="first_name" class="form-label">Ism</label>
+                                <input type="text" class="form-control" id="first_name" name="first_name" 
+                                       value="{{ form_data.first_name if form_data else '' }}">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="last_name" class="form-label">Familiya</label>
+                                <input type="text" class="form-control" id="last_name" name="last_name" 
+                                       value="{{ form_data.last_name if form_data else '' }}">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Permissions -->
+                    <hr>
+                    <div class="row">
+                        <div class="col-12">
+                            <h6 class="text-muted mb-3">Ruxsatlar va status</h6>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch mb-3">
+                                        <input class="form-check-input" type="checkbox" id="is_active" name="is_active" 
+                                               {% if not form_data or form_data.is_active %}checked{% endif %}>
+                                        <label class="form-check-label" for="is_active">
+                                            <strong>Faol foydalanuvchi</strong>
+                                            <div class="form-text">Foydalanuvchi tizimga kira oladi</div>
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch mb-3">
+                                        <input class="form-check-input" type="checkbox" id="is_superuser" name="is_superuser" 
+                                               {% if form_data and form_data.is_superuser %}checked{% endif %}>
+                                        <label class="form-check-label" for="is_superuser">
+                                            <strong>Administrator</strong>
+                                            <div class="form-text text-danger">Admin panelga kirish huquqi</div>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Form Actions -->
+                    <hr>
+                    <div class="d-flex justify-content-between">
+                        <a href="/admin/users" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle"></i> Bekor qilish
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Foydalanuvchini yaratish
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Help Card -->
+        <div class="card mt-4 border-info">
+            <div class="card-header bg-info text-white">
+                <h6 class="m-0">
+                    <i class="bi bi-info-circle"></i> Yordam
+                </h6>
+            </div>
+            <div class="card-body">
+                <ul class="mb-0">
+                    <li><strong>Username:</strong> Foydalanuvchi tizimga kirish uchun ishlatadi. Takrorlanmasligi kerak.</li>
+                    <li><strong>Email:</strong> Parolni tiklash va bildirishnomalar uchun ishlatiladi.</li>
+                    <li><strong>Administrator:</strong> Faqat ishonchli foydalanuvchilarga admin huquqi bering.</li>
+                    <li><strong>Faol status:</strong> Nofaol foydalanuvchilar tizimga kira olmaydi.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Username validation
+document.getElementById('username').addEventListener('input', function(e) {
+    let value = e.target.value;
+    // Remove invalid characters
+    value = value.replace(/[^a-zA-Z0-9_]/g, '');
+    e.target.value = value;
+});
+
+// Password strength indicator
+document.getElementById('password').addEventListener('input', function(e) {
+    let password = e.target.value;
+    let strength = 0;
+    
+    if (password.length >= 6) strength++;
+    if (password.match(/[a-z]/)) strength++;
+    if (password.match(/[A-Z]/)) strength++;
+    if (password.match(/[0-9]/)) strength++;
+    if (password.match(/[^a-zA-Z0-9]/)) strength++;
+    
+    let strengthText = '';
+    let strengthClass = '';
+    
+    switch(strength) {
+        case 0:
+        case 1:
+            strengthText = 'Juda zaif';
+            strengthClass = 'text-danger';
+            break;
+        case 2:
+            strengthText = 'Zaif';
+            strengthClass = 'text-warning';
+            break;
+        case 3:
+            strengthText = 'O\'rta';
+            strengthClass = 'text-info';
+            break;
+        case 4:
+        case 5:
+            strengthText = 'Kuchli';
+            strengthClass = 'text-success';
+            break;
+    }
+    
+    let helpText = e.target.nextElementSibling;
+    if (password.length > 0) {
+        helpText.innerHTML = `Kamida 6 ta belgi - <span class="${strengthClass}">${strengthText}</span>`;
+    } else {
+        helpText.innerHTML = 'Kamida 6 ta belgi';
+    }
+});
+</script>
+{% endblock %}

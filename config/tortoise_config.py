@@ -46,8 +46,9 @@ TORTOISE_ORM = {
         "models": {
             "models": [
                 "app.models.user",           # User modeli
-                # "app.models.product",      # Misol uchun product modeli
-                # "app.models.order",        # Misol uchun order modeli
+                "app.models.article",        # Article modeli
+                "app.models.page",           # Page modeli
+                "app.models.settings",       # Settings modeli
                 "aerich.models",            # Migration uchun aerich
             ],
             "default_connection": "default",
@@ -66,6 +67,9 @@ TORTOISE_ORM_TEST = {
         "models": {
             "models": [
                 "app.models.user",
+                "app.models.article",
+                "app.models.page", 
+                "app.models.settings",
                 "aerich.models",
             ],
             "default_connection": "default",
@@ -94,6 +98,9 @@ TORTOISE_ORM_PROD = {
         "models": {
             "models": [
                 "app.models.user",
+                "app.models.article",
+                "app.models.page", 
+                "app.models.settings",
                 "aerich.models",
             ],
             "default_connection": "default",

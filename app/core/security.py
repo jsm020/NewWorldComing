@@ -172,3 +172,24 @@ CSP_HEADER = (
     "connect-src 'self'; "
     "frame-ancestors 'none';"
 )
+
+# Convenience functions (aliases for SecurityUtils methods)
+def hash_password(password: str) -> str:
+    """Parolni hash qilish."""
+    return SecurityUtils.hash_password(password)
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Parolni tekshirish."""
+    return SecurityUtils.verify_password(plain_password, hashed_password)
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+    """JWT token yaratish."""
+    return SecurityUtils.create_access_token(data, expires_delta)
+
+def decode_access_token(token: str) -> Dict[str, Any]:
+    """JWT tokenni tekshirish (alias for verify_token)."""
+    return SecurityUtils.verify_token(token)
+
+def verify_token(token: str) -> Dict[str, Any]:
+    """JWT tokenni tekshirish."""
+    return SecurityUtils.verify_token(token)

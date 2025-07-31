@@ -1,0 +1,343 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Sozlamalar{% endblock %}
+{% block page_title %}Tizim sozlamalari{% endblock %}
+
+{% block page_actions %}
+<div class="btn-group" role="group">
+    <button type="button" class="btn btn-outline-secondary" onclick="backupSettings()">
+        <i class="bi bi-download"></i> Backup
+    </button>
+    <button type="button" class="btn btn-outline-warning" onclick="resetSettings()">
+        <i class="bi bi-arrow-clockwise"></i> Reset
+    </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Settings by Category -->
+        {% for category, settings in settings_by_category.items() %}
+        <div class="card shadow mb-4">
+            <div class="card-header">
+                <h6 class="m-0 font-weight-bold text-primary text-capitalize">
+                    {% if category == 'site' %}
+                    <i class="bi bi-globe"></i> Sayt sozlamalari
+                    {% elif category == 'features' %}
+                    <i class="bi bi-toggles"></i> Funksiyalar
+                    {% elif category == 'appearance' %}
+                    <i class="bi bi-palette"></i> Ko'rinish
+                    {% elif category == 'email' %}
+                    <i class="bi bi-envelope"></i> Email sozlamalari
+                    {% else %}
+                    <i class="bi bi-gear"></i> {{ category.title() }}
+                    {% endif %}
+                </h6>
+            </div>
+            <div class="card-body">
+                <form method="post" action="/admin/settings/update">
+                    <input type="hidden" name="category" value="{{ category }}">
+                    
+                    {% for setting in settings %}
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <label for="setting_{{ setting.id }}" class="form-label">
+                                <strong>{{ setting.key.replace('_', ' ').title() }}</strong>
+                                {% if setting.description %}
+                                <br><small class="text-muted">{{ setting.description }}</small>
+                                {% endif %}
+                            </label>
+                        </div>
+                        <div class="col-md-9">
+                            {% if setting.data_type == 'boolean' %}
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="setting_{{ setting.id }}" 
+                                       name="setting_{{ setting.id }}" value="true"
+                                       {% if setting.get_value() %}checked{% endif %}>
+                                <label class="form-check-label" for="setting_{{ setting.id }}">
+                                    Yoqilgan
+                                </label>
+                            </div>
+                            {% elif setting.data_type == 'number' %}
+                            <input type="number" class="form-control" id="setting_{{ setting.id }}" 
+                                   name="setting_{{ setting.id }}" value="{{ setting.value }}">
+                            {% elif setting.data_type == 'json' %}
+                            <textarea class="form-control" id="setting_{{ setting.id }}" 
+                                      name="setting_{{ setting.id }}" rows="4" 
+                                      placeholder="JSON formatida kiriting">{{ setting.value }}</textarea>
+                            {% elif setting.key.endswith('_password') or 'password' in setting.key %}
+                            <input type="password" class="form-control" id="setting_{{ setting.id }}" 
+                                   name="setting_{{ setting.id }}" value="{{ setting.value }}">
+                            {% elif setting.key.endswith('_email') or 'email' in setting.key %}
+                            <input type="email" class="form-control" id="setting_{{ setting.id }}" 
+                                   name="setting_{{ setting.id }}" value="{{ setting.value }}">
+                            {% elif setting.key.endswith('_url') or 'url' in setting.key %}
+                            <input type="url" class="form-control" id="setting_{{ setting.id }}" 
+                                   name="setting_{{ setting.id }}" value="{{ setting.value }}">
+                            {% elif setting.key.endswith('_css') or setting.key.endswith('_js') %}
+                            <textarea class="form-control" id="setting_{{ setting.id }}" 
+                                      name="setting_{{ setting.id }}" rows="6" 
+                                      placeholder="CSS yoki JavaScript kodi">{{ setting.value }}</textarea>
+                            {% else %}
+                            <input type="text" class="form-control" id="setting_{{ setting.id }}" 
+                                   name="setting_{{ setting.id }}" value="{{ setting.value }}">
+                            {% endif %}
+                            
+                            {% if setting.is_public %}
+                            <small class="text-info">
+                                <i class="bi bi-info-circle"></i> Bu sozlama ommaviy API orqali ko'rinadi
+                            </small>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                    
+                    <hr>
+                    <div class="text-end">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> {{ category.title() }} sozlamalarini saqlash
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+        
+        {% if not settings_by_category %}
+        <div class="card shadow">
+            <div class="card-body text-center py-5">
+                <i class="bi bi-gear fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">Sozlamalar topilmadi</h5>
+                <p class="text-muted">Hozircha hech qanday sozlama yo'q</p>
+                <button type="button" class="btn btn-primary" onclick="createDefaultSettings()">
+                    <i class="bi bi-plus-circle"></i> Standart sozlamalarni yaratish
+                </button>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card shadow border-info">
+            <div class="card-header bg-info text-white">
+                <h6 class="m-0">
+                    <i class="bi bi-lightning"></i> Tezkor amallar
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-3 mb-3">
+                        <button type="button" class="btn btn-outline-success btn-lg d-block" onclick="clearCache()">
+                            <i class="bi bi-arrow-clockwise fa-2x"></i>
+                            <br>Cache tozalash
+                        </button>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <button type="button" class="btn btn-outline-warning btn-lg d-block" onclick="optimizeDatabase()">
+                            <i class="bi bi-database fa-2x"></i>
+                            <br>DB optimizatsiya
+                        </button>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <button type="button" class="btn btn-outline-info btn-lg d-block" onclick="generateSitemap()">
+                            <i class="bi bi-map fa-2x"></i>
+                            <br>Sitemap yaratish
+                        </button>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <button type="button" class="btn btn-outline-secondary btn-lg d-block" onclick="systemInfo()">
+                            <i class="bi bi-info-circle fa-2x"></i>
+                            <br>Tizim ma'lumotlari
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- System Information Modal -->
+<div class="modal fade" id="systemInfoModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Tizim ma'lumotlari</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>Framework:</strong></td>
+                                <td>FastAPI + Tortoise ORM</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Python versiyasi:</strong></td>
+                                <td id="pythonVersion">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Database:</strong></td>
+                                <td id="databaseInfo">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Server vaqti:</strong></td>
+                                <td id="serverTime">-</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>Jami foydalanuvchilar:</strong></td>
+                                <td id="totalUsers">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Jami maqolalar:</strong></td>
+                                <td id="totalArticles">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Jami sahifalar:</strong></td>
+                                <td id="totalPages">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Disk maydoni:</strong></td>
+                                <td id="diskSpace">-</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Yopish</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.fa-2x {
+    font-size: 2em;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function clearCache() {
+    if (confirm('Cache tozalansinmi?')) {
+        fetch('/admin/settings/clear-cache', {method: 'POST'})
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    AdminUtils.showToast('Cache muvaffaqiyatli tozalandi', 'success');
+                } else {
+                    AdminUtils.showToast('Xatolik yuz berdi', 'error');
+                }
+            });
+    }
+}
+
+function optimizeDatabase() {
+    if (confirm('Ma\'lumotlar bazasini optimizatsiya qilasizmi?')) {
+        AdminUtils.showToast('Optimizatsiya boshlandi...', 'info');
+        fetch('/admin/settings/optimize-db', {method: 'POST'})
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    AdminUtils.showToast('Database muvaffaqiyatli optimizatsiya qilindi', 'success');
+                } else {
+                    AdminUtils.showToast('Xatolik yuz berdi', 'error');
+                }
+            });
+    }
+}
+
+function generateSitemap() {
+    AdminUtils.showToast('Sitemap yaratilmoqda...', 'info');
+    fetch('/admin/settings/generate-sitemap', {method: 'POST'})
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                AdminUtils.showToast('Sitemap muvaffaqiyatli yaratildi', 'success');
+            } else {
+                AdminUtils.showToast('Xatolik yuz berdi', 'error');
+            }
+        });
+}
+
+function systemInfo() {
+    // Populate modal with system information
+    document.getElementById('pythonVersion').textContent = 'Python 3.12+';
+    document.getElementById('databaseInfo').textContent = 'SQLite/PostgreSQL';
+    document.getElementById('serverTime').textContent = new Date().toLocaleString('uz-UZ');
+    
+    // Show modal
+    new bootstrap.Modal(document.getElementById('systemInfoModal')).show();
+    
+    // Fetch real-time data
+    fetch('/admin/settings/system-info')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('totalUsers').textContent = data.data.total_users;
+                document.getElementById('totalArticles').textContent = data.data.total_articles;
+                document.getElementById('totalPages').textContent = data.data.total_pages;
+                document.getElementById('diskSpace').textContent = data.data.disk_space;
+            }
+        });
+}
+
+function backupSettings() {
+    if (confirm('Barcha sozlamalarning backup olinsinmi?')) {
+        window.location.href = '/admin/settings/backup';
+    }
+}
+
+function resetSettings() {
+    if (confirm('Barcha sozlamalar standart holatga qaytarilsinmi? Bu amalni bekor qilib bo\'lmaydi!')) {
+        fetch('/admin/settings/reset', {method: 'POST'})
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    AdminUtils.showToast('Sozlamalar standart holatga qaytarildi', 'success');
+                    location.reload();
+                } else {
+                    AdminUtils.showToast('Xatolik yuz berdi', 'error');
+                }
+            });
+    }
+}
+
+function createDefaultSettings() {
+    fetch('/admin/settings/create-defaults', {method: 'POST'})
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                AdminUtils.showToast('Standart sozlamalar yaratildi', 'success');
+                location.reload();
+            } else {
+                AdminUtils.showToast('Xatolik yuz berdi', 'error');
+            }
+        });
+}
+
+// Auto-save drafts for textarea fields
+document.querySelectorAll('textarea').forEach(function(textarea) {
+    let saveTimeout;
+    textarea.addEventListener('input', function() {
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(function() {
+            // Auto-save logic could be implemented here
+            console.log('Auto-saving...', textarea.name);
+        }, 2000);
+    });
+});
+</script>
+{% endblock %}

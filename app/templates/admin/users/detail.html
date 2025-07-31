@@ -1,0 +1,317 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ user.username }} - Foydalanuvchi{% endblock %}
+{% block page_title %}Foydalanuvchi: {{ user.username }}{% endblock %}
+
+{% block page_actions %}
+<div class="btn-group" role="group">
+    <a href="/admin/users" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Orqaga
+    </a>
+    <a href="/admin/users/{{ user.id }}/edit" class="btn btn-warning">
+        <i class="bi bi-pencil"></i> Tahrirlash
+    </a>
+    {% if user.id != admin_user.id %}
+    <button type="button" class="btn btn-danger" onclick="confirmDelete()">
+        <i class="bi bi-trash"></i> O'chirish
+    </button>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- User Profile -->
+    <div class="col-lg-4">
+        <div class="card shadow">
+            <div class="card-header text-center">
+                <i class="bi bi-person-circle fa-5x text-muted"></i>
+                <h5 class="mt-2 mb-0">{{ user.first_name or user.username }}</h5>
+                <p class="text-muted">{{ user.email }}</p>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <h6 class="text-muted">Status</h6>
+                        {% if user.is_active %}
+                        <span class="badge bg-success">
+                            <i class="bi bi-check-circle"></i> Faol
+                        </span>
+                        {% else %}
+                        <span class="badge bg-secondary">
+                            <i class="bi bi-x-circle"></i> Nofaol
+                        </span>
+                        {% endif %}
+                    </div>
+                    <div class="col-6">
+                        <h6 class="text-muted">Rol</h6>
+                        {% if user.is_superuser %}
+                        <span class="badge bg-danger">
+                            <i class="bi bi-shield"></i> Administrator
+                        </span>
+                        {% else %}
+                        <span class="badge bg-primary">
+                            <i class="bi bi-person"></i> Foydalanuvchi
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- User Stats -->
+        <div class="card shadow mt-4">
+            <div class="card-header">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="bi bi-bar-chart"></i> Statistika
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6 border-end">
+                        <h5 class="text-info">{{ user_articles|length }}</h5>
+                        <small class="text-muted">Maqolalar</small>
+                    </div>
+                    <div class="col-6">
+                        <h5 class="text-success">{{ user_pages|length }}</h5>
+                        <small class="text-muted">Sahifalar</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- User Details -->
+    <div class="col-lg-8">
+        <!-- Basic Information -->
+        <div class="card shadow">
+            <div class="card-header">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="bi bi-info-circle"></i> Asosiy ma'lumotlar
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>ID:</strong></td>
+                                <td>{{ user.id }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Username:</strong></td>
+                                <td>{{ user.username }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Email:</strong></td>
+                                <td>{{ user.email }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Ism:</strong></td>
+                                <td>{{ user.first_name or '-' }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Familiya:</strong></td>
+                                <td>{{ user.last_name or '-' }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>Yoshi:</strong></td>
+                                <td>{{ user.age or '-' }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Balans:</strong></td>
+                                <td>${{ "%.2f"|format(user.balance) }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Reyting:</strong></td>
+                                <td>
+                                    {% if user.rating %}
+                                    {{ "%.1f"|format(user.rating) }}
+                                    {% for i in range(5) %}
+                                        {% if i < user.rating %}
+                                        <i class="bi bi-star-fill text-warning"></i>
+                                        {% else %}
+                                        <i class="bi bi-star text-muted"></i>
+                                        {% endif %}
+                                    {% endfor %}
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Tug'ilgan sana:</strong></td>
+                                <td>{{ user.birth_date.strftime('%d.%m.%Y') if user.birth_date else '-' }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Oxirgi kirish:</strong></td>
+                                <td>
+                                    {% if user.last_login %}
+                                    {{ user.last_login.strftime('%d.%m.%Y %H:%M') }}
+                                    {% else %}
+                                    Hech qachon
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                
+                {% if user.bio %}
+                <hr>
+                <div>
+                    <strong>Bio:</strong>
+                    <p class="mt-2">{{ user.bio }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Account Details -->
+        <div class="card shadow mt-4">
+            <div class="card-header">
+                <h6 class="m-0 font-weight-bold text-success">
+                    <i class="bi bi-clock-history"></i> Hisob ma'lumotlari
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Ro'yxatdan o'tgan:</strong></p>
+                        <p class="text-muted">{{ user.created_at.strftime('%d.%m.%Y %H:%M') }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Oxirgi yangilanish:</strong></p>
+                        <p class="text-muted">{{ user.updated_at.strftime('%d.%m.%Y %H:%M') }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- User Content -->
+<div class="row mt-4">
+    <!-- Recent Articles -->
+    <div class="col-lg-6">
+        <div class="card shadow">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-info">
+                    <i class="bi bi-newspaper"></i> So'nggi maqolalar
+                </h6>
+                <span class="badge bg-info">{{ user_articles|length }}</span>
+            </div>
+            <div class="card-body">
+                {% if user_articles %}
+                <div class="list-group list-group-flush">
+                    {% for article in user_articles %}
+                    <div class="list-group-item border-0 px-0">
+                        <div class="d-flex justify-content-between">
+                            <h6 class="mb-1">{{ article.title }}</h6>
+                            <small class="text-muted">{{ article.created_at.strftime('%d.%m.%Y') }}</small>
+                        </div>
+                        <div class="mt-1">
+                            {% if article.is_published %}
+                            <span class="badge bg-success">Nashr etilgan</span>
+                            {% else %}
+                            <span class="badge bg-warning">Qoralama</span>
+                            {% endif %}
+                            {% if article.is_featured %}
+                            <span class="badge bg-info">Tanlangan</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted text-center py-3">Hech qanday maqola yo'q</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Pages -->
+    <div class="col-lg-6">
+        <div class="card shadow">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-success">
+                    <i class="bi bi-file-text"></i> So'nggi sahifalar
+                </h6>
+                <span class="badge bg-success">{{ user_pages|length }}</span>
+            </div>
+            <div class="card-body">
+                {% if user_pages %}
+                <div class="list-group list-group-flush">
+                    {% for page in user_pages %}
+                    <div class="list-group-item border-0 px-0">
+                        <div class="d-flex justify-content-between">
+                            <h6 class="mb-1">{{ page.title }}</h6>
+                            <small class="text-muted">{{ page.created_at.strftime('%d.%m.%Y') }}</small>
+                        </div>
+                        <div class="mt-1">
+                            {% if page.is_published %}
+                            <span class="badge bg-success">Nashr etilgan</span>
+                            {% else %}
+                            <span class="badge bg-warning">Qoralama</span>
+                            {% endif %}
+                            {% if page.is_homepage %}
+                            <span class="badge bg-primary">Bosh sahifa</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted text-center py-3">Hech qanday sahifa yo'q</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete confirmation modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Foydalanuvchini o'chirish</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Siz rostdan ham <strong>{{ user.username }}</strong> foydalanuvchisini o'chirmoqchimisiz?</p>
+                <p class="text-danger">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    Bu amalni bekor qilib bo'lmaydi! Barcha maqolalar va sahifalar ham o'chiriladi.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Bekor qilish</button>
+                <form method="post" action="/admin/users/{{ user.id }}/delete" style="display: inline;">
+                    <input type="hidden" name="_method" value="DELETE">
+                    <button type="submit" class="btn btn-danger">O'chirish</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.fa-5x {
+    font-size: 5em;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function confirmDelete() {
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+</script>
+{% endblock %}

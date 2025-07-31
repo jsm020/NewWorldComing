@@ -1,0 +1,240 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block page_actions %}
+<div class="btn-group" role="group">
+    <a href="/admin/users/create" class="btn btn-outline-primary btn-sm">
+        <i class="bi bi-person-plus"></i> Yangi foydalanuvchi
+    </a>
+    <a href="/admin/articles/create" class="btn btn-outline-success btn-sm">
+        <i class="bi bi-plus-circle"></i> Yangi maqola
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            Jami foydalanuvchilar
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.total_users }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-people fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            Jami maqolalar
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.total_articles }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-newspaper fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            Nashr etilgan maqolalar
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.published_articles }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-check-circle fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            Haftalik yangi foydalanuvchilar
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.weekly_users }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-person-plus fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity Row -->
+<div class="row">
+    <!-- Recent Users -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="bi bi-people"></i> So'nggi foydalanuvchilar
+                </h6>
+                <a href="/admin/users" class="btn btn-sm btn-outline-primary">Barchasini ko'rish</a>
+            </div>
+            <div class="card-body">
+                {% if stats.recent_users %}
+                <div class="list-group list-group-flush">
+                    {% for user in stats.recent_users %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1">{{ user.first_name or user.username }}</h6>
+                            <p class="mb-1 text-muted">{{ user.email }}</p>
+                            <small class="text-muted">{{ user.created_at.strftime('%d.%m.%Y %H:%M') }}</small>
+                        </div>
+                        <div>
+                            {% if user.is_active %}
+                            <span class="badge bg-success">Faol</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Nofaol</span>
+                            {% endif %}
+                            {% if user.is_superuser %}
+                            <span class="badge bg-danger">Admin</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted text-center">Hech qanday foydalanuvchi yo'q</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Articles -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-success">
+                    <i class="bi bi-newspaper"></i> So'nggi maqolalar
+                </h6>
+                <a href="/admin/articles" class="btn btn-sm btn-outline-success">Barchasini ko'rish</a>
+            </div>
+            <div class="card-body">
+                {% if stats.recent_articles %}
+                <div class="list-group list-group-flush">
+                    {% for article in stats.recent_articles %}
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between">
+                            <h6 class="mb-1">{{ article.title }}</h6>
+                            <small class="text-muted">{{ article.created_at.strftime('%d.%m.%Y') }}</small>
+                        </div>
+                        <p class="mb-1 text-muted">{{ article.author.username }}</p>
+                        <div>
+                            {% if article.is_published %}
+                            <span class="badge bg-success">Nashr etilgan</span>
+                            {% else %}
+                            <span class="badge bg-warning">Qoralama</span>
+                            {% endif %}
+                            {% if article.is_featured %}
+                            <span class="badge bg-info">Tanlangan</span>
+                            {% endif %}
+                            {% if article.category %}
+                            <span class="badge bg-secondary">{{ article.category }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted text-center">Hech qanday maqola yo'q</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-dark">
+                    <i class="bi bi-lightning"></i> Tezkor amallar
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-3 mb-3">
+                        <a href="/admin/users/create" class="btn btn-outline-primary btn-lg d-block">
+                            <i class="bi bi-person-plus fa-2x"></i>
+                            <br>Foydalanuvchi qo'shish
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="/admin/articles/create" class="btn btn-outline-success btn-lg d-block">
+                            <i class="bi bi-plus-circle fa-2x"></i>
+                            <br>Maqola yozish
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="/admin/pages/create" class="btn btn-outline-info btn-lg d-block">
+                            <i class="bi bi-file-plus fa-2x"></i>
+                            <br>Sahifa yaratish
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="/admin/settings" class="btn btn-outline-dark btn-lg d-block">
+                            <i class="bi bi-gear fa-2x"></i>
+                            <br>Sozlamalar
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.card {
+    border-left: 5px solid transparent;
+}
+.border-left-primary {
+    border-left-color: #007bff !important;
+}
+.border-left-success {
+    border-left-color: #28a745 !important;
+}
+.border-left-info {
+    border-left-color: #17a2b8 !important;
+}
+.border-left-warning {
+    border-left-color: #ffc107 !important;
+}
+.fa-2x {
+    font-size: 2em;
+}
+</style>
+{% endblock %}

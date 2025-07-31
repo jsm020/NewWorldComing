@@ -8,6 +8,8 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from tortoise.contrib.fastapi import register_tortoise
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -18,6 +20,7 @@ from typing import Optional
 from app.core.utils import global_exception_handler, ResponseFormatter
 from app.core.security import ALLOWED_ORIGINS, CSP_HEADER, limiter
 from app.api import user, auth
+from app.admin.routes import router as admin_router
 from config.tortoise_config import TORTOISE_ORM
 
 
@@ -132,6 +135,13 @@ async def root():
 # API routerlarini ulash
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(user.router, prefix="/api/v1")
+
+# Admin panel routes
+app.include_router(admin_router, prefix="/admin")
+
+# Static files va templates setup
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+templates = Jinja2Templates(directory="app/templates")
 
 
 # Custom OpenAPI schema
