@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+
+{% block title %}{{ user.username }} - Foydalanuvchi{% endblock %}
+
+{% block page_title %}
+<i class="fas fa-user"></i> {{ user.username }}
+{% if user.id == admin_user.id %}
+<span class="badge bg-warning ms-2">Siz</span>
+{% endif %}
+{% endblock %}
+
+{% block page_actions %}
+<div class="btn-group" role="group">
+    <a href="/admin/users" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> Orqaga
+    </a>
+    <button type="button" class="btn btn-warning" onclick="editUser()">
+        <i class="fas fa-edit"></i> Tahrirlash
+    </button>
+    {% if user.id != admin_user.id %}
+    <button type="button" class="btn btn-danger" onclick="deleteUser()">
+        <i class="fas fa-trash"></i> O'chirish
+    </button>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- User info -->
+    <div class="col-md-8">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-user-circle"></i> Foydalanuvchi ma'lumotlari
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>ID:</strong></td>
+                                <td>{{ user.id }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Username:</strong></td>
+                                <td>{{ user.username }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Email:</strong></td>
+                                <td>{{ user.email }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Ism:</strong></td>
+                                <td>{{ user.first_name or '-' }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Familiya:</strong></td>
+                                <td>{{ user.last_name or '-' }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Yosh:</strong></td>
+                                <td>{{ user.age or '-' }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>Holat:</strong></td>
+                                <td>
+                                    {% if user.is_active %}
+                                    <span class="badge bg-success">Faol</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">Nofaol</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Superuser:</strong></td>
+                                <td>
+                                    {% if user.is_superuser %}
+                                    <span class="badge bg-warning">Ha</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Yo'q</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Balans:</strong></td>
+                                <td>${{ "%.2f"|format(user.balance) }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Reyting:</strong></td>
+                                <td>
+                                    {% if user.rating %}
+                                        {% for i in range(5) %}
+                                            {% if i < user.rating %}
+                                            <i class="fas fa-star text-warning"></i>
+                                            {% else %}
+                                            <i class="far fa-star text-muted"></i>
+                                            {% endif %}
+                                        {% endfor %}
+                                        ({{ user.rating }})
+                                    {% else %}
+                                        <em class="text-muted">Berilmagan</em>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Tug'ilgan sana:</strong></td>
+                                <td>{{ user.birth_date.strftime('%d.%m.%Y') if user.birth_date else '-' }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                
+                {% if user.bio %}
+                <div class="mt-3">
+                    <strong>Bio:</strong>
+                    <p class="mt-2">{{ user.bio }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Activity info -->
+    <div class="col-md-4">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-clock"></i> Faoliyat
+                </h6>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <td><strong>Ro'yxatdan o'tgan:</strong></td>
+                        <td>
+                            <small>{{ user.created_at.strftime('%d.%m.%Y %H:%M') if user.created_at else '-' }}</small>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>Oxirgi yangilanish:</strong></td>
+                        <td>
+                            <small>{{ user.updated_at.strftime('%d.%m.%Y %H:%M') if user.updated_at else '-' }}</small>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>Oxirgi kirish:</strong></td>
+                        <td>
+                            <small>{{ user.last_login.strftime('%d.%m.%Y %H:%M') if user.last_login else 'Hech qachon' }}</small>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Quick actions -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-bolt"></i> Tezkor amallar
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    {% if user.id != admin_user.id %}
+                    <button class="btn btn-warning btn-sm" onclick="toggleUserActive()">
+                        {% if user.is_active %}
+                        <i class="fas fa-pause"></i> Deaktivlashtirish
+                        {% else %}
+                        <i class="fas fa-play"></i> Aktivlashtirish
+                        {% endif %}
+                    </button>
+                    {% endif %}
+                    
+                    <button class="btn btn-info btn-sm" onclick="sendMessage()">
+                        <i class="fas fa-envelope"></i> Xabar yuborish
+                    </button>
+                    
+                    <button class="btn btn-success btn-sm" onclick="viewActivity()">
+                        <i class="fas fa-history"></i> Faoliyat tarixi
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- User stats -->
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-chart-line"></i> Statistika
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="text-center">
+                    <div class="mb-2">
+                        <strong>Hisob yoshi</strong><br>
+                        <span class="text-muted">
+                            {% if user.created_at %}
+                                {% set account_age = (moment() - user.created_at).days if moment else 0 %}
+                                {{ account_age }} kun
+                            {% else %}
+                                0 kun
+                            {% endif %}
+                        </span>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <strong>Profile to'ldirilganligi</strong><br>
+                        {% set profile_fields = [user.first_name, user.last_name, user.bio, user.birth_date, user.age] %}
+                        {% set filled_fields = profile_fields | selectattr | list | length %}
+                        {% set total_fields = profile_fields | length %}
+                        {% set percentage = (filled_fields / total_fields * 100) | round %}
+                        
+                        <div class="progress" style="height: 20px;">
+                            <div class="progress-bar" role="progressbar" style="width: {{ percentage }}%" 
+                                 aria-valuenow="{{ percentage }}" aria-valuemin="0" aria-valuemax="100">
+                                {{ percentage }}%
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const userId = {{ user.id }};
+const username = "{{ user.username }}";
+const isCurrentUser = {{ (user.id == admin_user.id) | lower }};
+
+function editUser() {
+    // Bu yerda edit modal yoki sahifa ochilishi mumkin
+    showAlert('Edit funksiyasi hali ishlab chiqilmagan', 'info');
+}
+
+function deleteUser() {
+    if (isCurrentUser) {
+        showAlert('O\'zingizni o\'chira olmaysiz', 'warning');
+        return;
+    }
+    
+    if (confirm(`"${username}" foydalanuvchisini o'chirishni tasdiqlaysizmi?\n\nBu amal qaytarilmaydi!`)) {
+        fetch(`/admin/api/users/${userId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert(data.message, 'success');
+                // Foydalanuvchilar ro'yxatiga o'tish
+                setTimeout(() => {
+                    window.location.href = '/admin/users';
+                }, 1500);
+            } else {
+                showAlert(data.message, 'danger');
+            }
+        })
+        .catch(error => {
+            showAlert('Xatolik yuz berdi', 'danger');
+            console.error('Error:', error);
+        });
+    }
+}
+
+function toggleUserActive() {
+    if (isCurrentUser) {
+        showAlert('O\'zingizni deaktiv qila olmaysiz', 'warning');
+        return;
+    }
+    
+    const isActive = {{ user.is_active | lower }};
+    const action = isActive ? "deaktivlashtirish" : "aktivlashtirish";
+    
+    if (confirm(`Foydalanuvchini ${action}ni xohlaysizmi?`)) {
+        fetch(`/admin/api/users/${userId}/toggle-active`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert(data.message, 'success');
+                // Sahifani yangilash
+                setTimeout(() => {
+                    location.reload();
+                }, 1000);
+            } else {
+                showAlert(data.message, 'danger');
+            }
+        })
+        .catch(error => {
+            showAlert('Xatolik yuz berdi', 'danger');
+            console.error('Error:', error);
+        });
+    }
+}
+
+function sendMessage() {
+    showAlert('Xabar yuborish funksiyasi hali ishlab chiqilmagan', 'info');
+}
+
+function viewActivity() {
+    showAlert('Faoliyat tarixi funksiyasi hali ishlab chiqilmagan', 'info');
+}
+</script>
+{% endblock %}

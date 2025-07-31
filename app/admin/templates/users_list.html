@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+
+{% block title %}Foydalanuvchilar - FastAPI Admin{% endblock %}
+
+{% block page_title %}
+<i class="fas fa-users"></i> Foydalanuvchilar
+{% endblock %}
+
+{% block page_actions %}
+<div class="btn-group" role="group">
+    <button type="button" class="btn btn-success" onclick="window.location.href='/docs#/User/create_user_api_v1_users_post'">
+        <i class="fas fa-plus"></i> Yangi foydalanuvchi
+    </button>
+    <button type="button" class="btn btn-info" onclick="exportUsers()">
+        <i class="fas fa-download"></i> Export
+    </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Search -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <form method="get" action="/admin/users" class="d-flex">
+            <input type="text" name="search" class="form-control" placeholder="Username yoki email bo'yicha qidiring..." value="{{ search }}">
+            <button type="submit" class="btn btn-primary ms-2">
+                <i class="fas fa-search"></i>
+            </button>
+            {% if search %}
+            <a href="/admin/users" class="btn btn-secondary ms-2">
+                <i class="fas fa-times"></i>
+            </a>
+            {% endif %}
+        </form>
+    </div>
+    <div class="col-md-6 text-end">
+        <small class="text-muted">
+            Jami: {{ pagination.total }} ta foydalanuvchi
+        </small>
+    </div>
+</div>
+
+<!-- Users Table -->
+<div class="card shadow">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>ID</th>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Ism Familiya</th>
+                        <th>Holat</th>
+                        <th>Superuser</th>
+                        <th>Yaratilgan</th>
+                        <th class="table-actions">Amallar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr id="user-{{ user.id }}">
+                        <td>{{ user.id }}</td>
+                        <td>
+                            <strong>{{ user.username }}</strong>
+                            {% if user.id == admin_user.id %}
+                            <span class="badge bg-warning ms-1">Siz</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ user.email }}</td>
+                        <td>
+                            {% if user.first_name or user.last_name %}
+                                {{ user.first_name or '' }} {{ user.last_name or '' }}
+                            {% else %}
+                                <em class="text-muted">Kiritilmagan</em>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if user.is_active %}
+                            <span class="badge bg-success">Faol</span>
+                            {% else %}
+                            <span class="badge bg-danger">Nofaol</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if user.is_superuser %}
+                            <i class="fas fa-crown text-warning" title="Superuser"></i>
+                            {% else %}
+                            <i class="fas fa-user text-muted" title="Oddiy foydalanuvchi"></i>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <small>{{ user.created_at.strftime('%d.%m.%Y %H:%M') if user.created_at else '' }}</small>
+                        </td>
+                        <td class="table-actions">
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button class="btn btn-outline-primary" onclick="viewUser({{ user.id }})">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="btn btn-outline-warning" onclick="toggleUserActive({{ user.id }}, {{ user.is_active|lower }})" 
+                                        {% if user.id == admin_user.id %}disabled{% endif %}>
+                                    {% if user.is_active %}
+                                    <i class="fas fa-pause"></i>
+                                    {% else %}
+                                    <i class="fas fa-play"></i>
+                                    {% endif %}
+                                </button>
+                                <button class="btn btn-outline-danger" onclick="deleteUser({{ user.id }}, '{{ user.username }}')" 
+                                        {% if user.id == admin_user.id %}disabled{% endif %}>
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Pagination -->
+{% if pagination.total_pages > 1 %}
+<nav aria-label="Sahifalash">
+    <ul class="pagination justify-content-center mt-4">
+        {% if pagination.has_prev %}
+        <li class="page-item">
+            <a class="page-link" href="/admin/users?page={{ pagination.prev_page }}{% if search %}&search={{ search }}{% endif %}">
+                <i class="fas fa-chevron-left"></i> Oldingi
+            </a>
+        </li>
+        {% endif %}
+        
+        {% for page_num in range(1, pagination.total_pages + 1) %}
+            {% if page_num == pagination.page %}
+            <li class="page-item active">
+                <span class="page-link">{{ page_num }}</span>
+            </li>
+            {% elif page_num <= 3 or page_num > pagination.total_pages - 3 or (page_num >= pagination.page - 2 and page_num <= pagination.page + 2) %}
+            <li class="page-item">
+                <a class="page-link" href="/admin/users?page={{ page_num }}{% if search %}&search={{ search }}{% endif %}">{{ page_num }}</a>
+            </li>
+            {% elif page_num == pagination.page - 3 or page_num == pagination.page + 3 %}
+            <li class="page-item disabled">
+                <span class="page-link">...</span>
+            </li>
+            {% endif %}
+        {% endfor %}
+        
+        {% if pagination.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="/admin/users?page={{ pagination.next_page }}{% if search %}&search={{ search }}{% endif %}">
+                Keyingi <i class="fas fa-chevron-right"></i>
+            </a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function viewUser(userId) {
+    window.location.href = `/admin/users/${userId}`;
+}
+
+function toggleUserActive(userId, isActive) {
+    const action = isActive ? "deaktivlashtirish" : "aktivlashtirish";
+    
+    if (confirm(`Foydalanuvchini ${action}ni xohlaysizmi?`)) {
+        fetch(`/admin/api/users/${userId}/toggle-active`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert(data.message, 'success');
+                // Sahifani yangilash
+                setTimeout(() => {
+                    location.reload();
+                }, 1000);
+            } else {
+                showAlert(data.message, 'danger');
+            }
+        })
+        .catch(error => {
+            showAlert('Xatolik yuz berdi', 'danger');
+            console.error('Error:', error);
+        });
+    }
+}
+
+function deleteUser(userId, username) {
+    if (confirm(`"${username}" foydalanuvchisini o'chirishni tasdiqlaysizmi?\n\nBu amal qaytarilmaydi!`)) {
+        fetch(`/admin/api/users/${userId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert(data.message, 'success');
+                // Qatorni olib tashlash
+                document.getElementById(`user-${userId}`).remove();
+            } else {
+                showAlert(data.message, 'danger');
+            }
+        })
+        .catch(error => {
+            showAlert('Xatolik yuz berdi', 'danger');
+            console.error('Error:', error);
+        });
+    }
+}
+
+function exportUsers() {
+    // Bu yerda export funksiyasi bo'lishi mumkin
+    showAlert('Export funksiyasi hali amalga oshirilmagan', 'info');
+}
+</script>
+{% endblock %}

@@ -5,6 +5,7 @@ FastAPI asosiy ilova - xavfsizlik, middleware va to'liq konfiguratsiya bilan.
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
@@ -14,10 +15,12 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 import uvicorn
 from typing import Optional
+from decouple import config
 
 from app.core.utils import global_exception_handler, ResponseFormatter
 from app.core.security import ALLOWED_ORIGINS, CSP_HEADER, limiter
 from app.api import user, auth
+from app.admin import setup_admin_panel
 from config.tortoise_config import TORTOISE_ORM
 
 
@@ -30,6 +33,7 @@ app = FastAPI(
     ## Xususiyatlar:
     - **Tortoise ORM** - async ORM
     - **JWT Authentication** - xavfsiz autentifikatsiya
+    - **Admin Panel** - Django admin ga o'xshash
     - **Rate Limiting** - so'rovlarni cheklash
     - **Input Validation** - ma'lumotlarni tekshirish
     - **XSS & SQL Injection himoyasi**
@@ -43,6 +47,12 @@ app = FastAPI(
     - SQL injection himoyasi
     - XSS himoyasi
     - CSRF himoyasi
+    
+    ## Admin Panel:
+    - Django-style admin interface: `/admin`
+    - User management
+    - Database browser
+    - System statistics
     """,
     version="1.0.0",
     contact={
@@ -59,6 +69,9 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+# Session middleware for admin panel
+SECRET_KEY = config('SECRET_KEY', default='your-secret-key-change-it-in-production-please-use-strong-key')
+app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
 # Security Middleware
 @app.middleware("http")
@@ -123,7 +136,8 @@ async def root():
             "version": "1.0.0",
             "docs": "/docs",
             "redoc": "/redoc",
-            "health": "/health"
+            "health": "/health",
+            "admin": "/admin"
         },
         message="FastAPI + Tortoise ORM shabloni muvaffaqiyatli ishlayapti!"
     )
@@ -132,6 +146,9 @@ async def root():
 # API routerlarini ulash
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(user.router, prefix="/api/v1")
+
+# Admin panel ni ulash
+setup_admin_panel(app)
 
 
 # Custom OpenAPI schema

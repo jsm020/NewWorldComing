@@ -5,7 +5,7 @@
 Python 3.9+ o'rnatilgan bo'lishi kerak.
 
 Terminalda:
-```
+```bash
 pip install -r requirements.txt
 ```
 
@@ -13,21 +13,61 @@ pip install -r requirements.txt
 
 Standart holatda SQLite ishlaydi. Agar PostgreSQL yoki boshqa DB ishlatmoqchi bo'lsangiz, muhit o'zgaruvchisini belgilang:
 
-```
+```bash
 export DB_URL="postgres://user:password@localhost:5432/dbname"
 ```
 
-## 3. Ilovani ishga tushirish
+## 3. Superuser yaratish (Django createsuperuser ga o'xshash)
 
+```bash
+python -m app.management.commands.createsuperuser
 ```
+
+Bu komanda sizdan quyidagilarni so'raydi:
+- Username
+- Email 
+- Password
+- First name (ixtiyoriy)
+- Last name (ixtiyoriy)
+
+Mavjud foydalanuvchilarni ko'rish:
+```bash
+python -m app.management.commands.createsuperuser --list
+```
+
+## 4. Ilovani ishga tushirish
+
+```bash
 uvicorn app.main:app --reload
 ```
 
+## 5. Admin Panel (Django admin ga o'xshash)
+
+Admin panelga kirish: **http://localhost:8000/admin**
+
+Xususiyatlari:
+- 🔐 **Xavfsiz login** - faqat superuser foydalanuvchilar
+- 👥 **User management** - foydalanuvchilarni ko'rish, tahrirlash, o'chirish
+- 📊 **Dashboard** - tizim statistikalari
+- 🔍 **Search va Filter** - tezkor qidiruv
+- 📱 **Responsive design** - mobil qurilmalar uchun moslashgan
+
+### Admin panel sahifalari:
+- `/admin/login` - Admin login
+- `/admin/dashboard` - Asosiy dashboard
+- `/admin/users` - Foydalanuvchilar ro'yxati
+- `/admin/users/{id}` - Foydalanuvchi batafsil
+
+## 6. API Endpoints
+
 Brauzerda yoki Postman orqali:
 - `GET /` — Loyihaning ishlashini tekshirish
-- `POST /auth/register` — Foydalanuvchi ro'yxatdan o'tkazish
-- `POST /auth/login` — Login va JWT olish
-- `GET /users/{user_id}` — Foydalanuvchini olish
+- `GET /admin` — Admin panel (login kerak)
+- `POST /api/v1/auth/register` — Foydalanuvchi ro'yxatdan o'tkazish
+- `POST /api/v1/auth/login` — Login va JWT olish
+- `GET /api/v1/users/{user_id}` — Foydalanuvchini olish
+- `GET /docs` — API documentation (Swagger)
+- `GET /redoc` — Alternative API documentation
 
 ## 4. Testlarni ishga tushirish
 

@@ -8,7 +8,7 @@ import secrets
 import re
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
-from passlib.context import CryptContext
+import bcrypt
 from jose import JWTError, jwt
 from fastapi import HTTPException, status, Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -24,9 +24,6 @@ SECRET_KEY = config('SECRET_KEY', default='your-secret-key-change-it-in-producti
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 # Rate limiting
 limiter = Limiter(key_func=get_remote_address)
 
@@ -40,12 +37,21 @@ class SecurityUtils:
     @staticmethod
     def hash_password(password: str) -> str:
         """Parolni hash qilish (bcrypt bilan)."""
-        return pwd_context.hash(password)
+        # Bcrypt bilan hash qilish
+        salt = bcrypt.gensalt()
+        hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
+        return hashed.decode('utf-8')
     
     @staticmethod
     def verify_password(plain_password: str, hashed_password: str) -> bool:
         """Parolni tekshirish."""
-        return pwd_context.verify(plain_password, hashed_password)
+        try:
+            return bcrypt.checkpw(
+                plain_password.encode('utf-8'), 
+                hashed_password.encode('utf-8')
+            )
+        except Exception:
+            return False
     
     @staticmethod
     def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:

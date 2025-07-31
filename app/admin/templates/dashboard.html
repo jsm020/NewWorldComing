@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - FastAPI Admin{% endblock %}
+
+{% block page_title %}
+<i class="fas fa-tachometer-alt"></i> Dashboard
+{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item active">Dashboard</li>
+{% endblock %}
+
+{% block content %}
+<!-- Statistikalar -->
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stats-card">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <div class="stats-label">Jami foydalanuvchilar</div>
+                        <div class="stats-value">{{ stats.total_users }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-users stats-icon"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stats-card stats-success">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <div class="stats-label">Faol foydalanuvchilar</div>
+                        <div class="stats-value">{{ stats.active_users }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-check-circle stats-icon"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stats-card stats-warning">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <div class="stats-label">Superuserlar</div>
+                        <div class="stats-value">{{ stats.superusers }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-crown stats-icon"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stats-card stats-info">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <div class="stats-label">Yangi (7 kun)</div>
+                        <div class="stats-value">{{ stats.new_users_week }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-user-plus stats-icon"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tezkor amallar -->
+<div class="quick-actions">
+    <a href="/admin/users" class="quick-action-card">
+        <i class="fas fa-users"></i>
+        <h6>Foydalanuvchilarni boshqarish</h6>
+        <p class="text-muted mb-0">{{ stats.total_users }} ta foydalanuvchi</p>
+    </a>
+    
+    <a href="/docs" target="_blank" class="quick-action-card">
+        <i class="fas fa-book"></i>
+        <h6>API Documentation</h6>
+        <p class="text-muted mb-0">Swagger UI</p>
+    </a>
+    
+    <a href="/" target="_blank" class="quick-action-card">
+        <i class="fas fa-globe"></i>
+        <h6>Saytni ko'rish</h6>
+        <p class="text-muted mb-0">Frontend ko'rinish</p>
+    </a>
+    
+    <div class="quick-action-card" onclick="createSuperuser()" style="cursor: pointer;">
+        <i class="fas fa-user-shield"></i>
+        <h6>Superuser yaratish</h6>
+        <p class="text-muted mb-0">Terminal orqali</p>
+    </div>
+</div>
+
+<!-- Tizim ma'lumotlari -->
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h6><i class="fas fa-server"></i> Server ma'lumotlari</h6>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <td><strong>Framework:</strong></td>
+                        <td>FastAPI</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Database:</strong></td>
+                        <td>Tortoise ORM</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Admin:</strong></td>
+                        <td>Custom Admin Panel</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Version:</strong></td>
+                        <td>1.0.0</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h6><i class="fas fa-shield-alt"></i> Xavfsizlik</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-2">
+                    <i class="fas fa-check text-success me-2"></i>
+                    <span>JWT Authentication</span>
+                </div>
+                <div class="d-flex align-items-center mb-2">
+                    <i class="fas fa-check text-success me-2"></i>
+                    <span>Rate Limiting</span>
+                </div>
+                <div class="d-flex align-items-center mb-2">
+                    <i class="fas fa-check text-success me-2"></i>
+                    <span>Input Sanitization</span>
+                </div>
+                <div class="d-flex align-items-center mb-2">
+                    <i class="fas fa-check text-success me-2"></i>
+                    <span>SQL Injection Protection</span>
+                </div>
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-check text-success me-2"></i>
+                    <span>XSS Protection</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tezkor statistika grafigi (placeholder) -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h6><i class="fas fa-chart-line"></i> Oxirgi 7 kun faoliyati</h6>
+            </div>
+            <div class="card-body text-center py-5">
+                <i class="fas fa-chart-area fa-3x text-muted mb-3"></i>
+                <p class="text-muted">Grafik ko'rinish uchun Chart.js yoki boshqa kutubxona qo'shilishi mumkin</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function createSuperuser() {
+    if (confirm('Yangi superuser yaratish uchun terminal ishlatishingiz kerak. Qo\'llanmani ko\'rasizmi?')) {
+        const instructions = `Terminal orqali quyidagi komandani bajaring:
+
+python -m app.management.commands.createsuperuser
+
+Yoki barcha foydalanuvchilarni ko'rish uchun:
+
+python -m app.management.commands.createsuperuser --list`;
+        
+        alert(instructions);
+    }
+}
+</script>
+{% endblock %}
