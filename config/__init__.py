@@ -1,0 +1,1 @@
+# Bo'sh fayl, konfiguratsiya fayllari shu yerda bo'ladi

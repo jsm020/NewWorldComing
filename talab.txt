@@ -1,0 +1,52 @@
+# Texnik topshiriq: FastAPI + Tortoise ORM asosiy shablon proyekt
+
+## Maqsad
+Shunday asosiy FastAPI shablon (base template) proyekt yaratilsin-ki, unda:
+- Django ORM yoki boshqa klassik ORMlardan butunlay voz kechilgan bo‘lsin;
+- Barcha model va ma’lumotlar bilan ishlash **Tortoise ORM** orqali amalga oshiriladi;
+- Xavfsizlikning barcha asosiy turlari (SQL injection, XSS, CSRF, va boshqalar) uchun himoya choralari o‘rnatilgan bo‘lsin;
+- Shablon loyihani keyingi har qanday yangi proyekt uchun “base” qilib olib, ustiga model va API yozishda qulay bo‘lsin.
+
+## Texnik talablar
+
+### 1. FastAPI asosida, Tortoise ORM to‘liq integratsiya qilinadi
+- Har qanday model va ma’lumotlar bazasi bilan ishlash faqat Tortoise ORM orqali.
+- Tortoise ORM uchun alohida konfiguratsiya va init funksiyasi yoziladi.
+- Django ORM yoki SQLAlchemy ishlatilmaydi.
+
+### 2. Xavfsizlik choralarini ko‘rish
+- **SQL Injection:** Faqat Tortoise ORM va parametrizatsiyalangan metodlardan foydalaniladi. Xom SQL ishlatilsa, har doim parametrizatsiya qilinadi.
+- **XSS:** FastAPI response’larida Pydantic yordamida validatsiya va sanitarizatsiya qilinadi.
+- **CSRF:** (Agar JWT yoki Cookie orqali autentifikatsiya ishlatilsa, kerakli choralar ko‘riladi.)
+- **Other:** Pydantic model va input validatsiyasi, kerakli joylarda sanitizatsiya.
+
+### 3. Proyekt tuzilmasi
+- `app/` — asosiy ilova kodi
+    - `models/` — Tortoise ORM modellari
+    - `api/` — Endpointlar (routerlar)
+    - `core/` — konfiguratsiya, security util’lar
+    - `main.py` — ilovani ishga tushiruvchi fayl
+- `tests/` — testlar (xavfsizlik va CRUD uchun)
+- `config/` — Tortoise ORM va boshqa konfiguratsiya fayllari
+
+### 4. Ishga tushirish va foydalanish
+- `README.md` faylida Tortoise ORMni qanday init qilish, migrate qilish va ishlatish bo‘yicha qisqa yo‘riqnoma.
+- Har bir yangi app/model uchun misol sifatida yozilgan kod.
+
+### 5. Testlar va misol endpointlar
+- Xavfsizlik testlari (masalan, SQL injection test case).
+- Model yaratish, o‘qish, yangilash va o‘chirish uchun misol endpointlar (CRUD).
+
+## Qo‘shimcha talablar
+- Kutilmagan xatoliklar uchun global error handler.
+- Loyiha future-proof va kengaytiriladigan bo‘lishi kerak.
+- Kutilgan barcha kutubxonalar requirements.txt faylida ko‘rsatilgan bo‘lsin.
+
+## Natija fayllari
+- To‘liq ishlaydigan FastAPI + Tortoise ORM asosiy shablon proyekt kodi.
+- Oson klonlash va ustiga model yozish uchun tayyor template.
+- Xavfsizlik choralari va misol API endpointlar.
+
+---
+
+**Esda tuting:** Django yoki boshqa ORM emas, faqat FastAPI va Tortoise ORM ishlatiladi. Loyihada xavfsizlik va kengaytirilish eng muhim mezon!  

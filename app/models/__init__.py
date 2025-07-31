@@ -1,0 +1,1 @@
+# Bo'sh fayl, Tortoise ORM modellari shu yerga yoziladi

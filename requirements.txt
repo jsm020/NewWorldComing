@@ -1,0 +1,6 @@
+fastapi
+tortoise-orm
+uvicorn
+pydantic
+passlib[bcrypt]
+pyjwt
