@@ -171,10 +171,10 @@ ALLOWED_ORIGINS = [
 # Content Security Policy
 CSP_HEADER = (
     "default-src 'self'; "
-    "script-src 'self' 'unsafe-inline'; "
-    "style-src 'self' 'unsafe-inline'; "
+    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://code.jquery.com; "
+    "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; "
+    "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; "
     "img-src 'self' data: https:; "
-    "font-src 'self' https:; "
     "connect-src 'self'; "
     "frame-ancestors 'none';"
 )

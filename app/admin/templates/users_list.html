@@ -8,9 +8,9 @@
 
 {% block page_actions %}
 <div class="btn-group" role="group">
-    <button type="button" class="btn btn-success" onclick="window.location.href='/docs#/User/create_user_api_v1_users_post'">
+    <a href="/admin/users/add" class="btn btn-success">
         <i class="fas fa-plus"></i> Yangi foydalanuvchi
-    </button>
+    </a>
     <button type="button" class="btn btn-info" onclick="exportUsers()">
         <i class="fas fa-download"></i> Export
     </button>
@@ -223,5 +223,150 @@ function exportUsers() {
     // Bu yerda export funksiyasi bo'lishi mumkin
     showAlert('Export funksiyasi hali amalga oshirilmagan', 'info');
 }
+
+function openCreateUserModal() {
+    console.log('openCreateUserModal called');
+    const modalElement = document.getElementById('createUserModal');
+    
+    if (modalElement) {
+        // Bootstrap 5 modal
+        const modal = new bootstrap.Modal(modalElement);
+        modal.show();
+        console.log('Modal shown');
+    } else {
+        console.error('Modal element not found');
+    }
+}
+
+function debugModal() {
+    console.log('debugModal called');
+    console.log('Bootstrap:', typeof bootstrap);
+    const modalElement = document.getElementById('createUserModal');
+    console.log('Modal element:', modalElement);
+    
+    if (modalElement && typeof bootstrap !== 'undefined') {
+        const modal = new bootstrap.Modal(modalElement);
+        modal.show();
+        console.log('Modal manually shown');
+    } else {
+        console.error('Modal element or Bootstrap not found');
+    }
+}
+
+function createUser() {
+    const form = document.getElementById('createUserForm');
+    const formData = new FormData(form);
+    
+    fetch('/admin/api/users', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert(data.message, 'success');
+            // Modalni yopish
+            const modal = bootstrap.Modal.getInstance(document.getElementById('createUserModal'));
+            modal.hide();
+            // Formni tozalash
+            form.reset();
+            // Sahifani yangilash
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
+        } else {
+            showAlert(data.message, 'danger');
+        }
+    })
+    .catch(error => {
+        showAlert('Xatolik yuz berdi', 'danger');
+        console.error('Error:', error);
+    });
+}
 </script>
+
+<!-- User yaratish modali -->
+<div class="modal fade" id="createUserModal" tabindex="-1" aria-labelledby="createUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createUserModalLabel">
+                    <i class="fas fa-user-plus"></i> Yangi foydalanuvchi yaratish
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createUserForm" onsubmit="event.preventDefault(); createUser();">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="username" class="form-label">Username <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="username" name="username" required>
+                                <div class="form-text">Foydalanuvchi nomi (takrorlanmasligi kerak)</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+                                <input type="email" class="form-control" id="email" name="email" required>
+                                <div class="form-text">Email manzili (takrorlanmasligi kerak)</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="first_name" class="form-label">Ism</label>
+                                <input type="text" class="form-control" id="first_name" name="first_name">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="last_name" class="form-label">Familiya</label>
+                                <input type="text" class="form-control" id="last_name" name="last_name">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Parol <span class="text-danger">*</span></label>
+                        <input type="password" class="form-control" id="password" name="password" required minlength="6">
+                        <div class="form-text">Kamida 6 ta belgidan iborat bo'lishi kerak</div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="is_active" name="is_active" checked>
+                                <label class="form-check-label" for="is_active">
+                                    Faol
+                                </label>
+                                <div class="form-text">Foydalanuvchi tizimga kira oladimi?</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="is_superuser" name="is_superuser">
+                                <label class="form-check-label" for="is_superuser">
+                                    Super foydalanuvchi
+                                </label>
+                                <div class="form-text">Admin paneliga kirish huquqi</div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> Bekor qilish
+                </button>
+                <button type="button" class="btn btn-success" onclick="createUser()">
+                    <i class="fas fa-save"></i> Saqlash
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}

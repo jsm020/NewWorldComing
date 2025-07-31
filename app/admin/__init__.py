@@ -189,6 +189,105 @@ async def admin_users_list(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# User qo'shish sahifasi
+@admin_router.get("/users/add", response_class=HTMLResponse)
+async def admin_add_user_page(request: Request, admin_user = Depends(get_admin_user)):
+    """User qo'shish sahifasi."""
+    return templates.TemplateResponse(
+        "add_user.html", 
+        {
+            "request": request,
+            "admin_user": admin_user,
+        }
+    )
+
+
+# User qo'shish (POST)
+@admin_router.post("/users/add", response_class=HTMLResponse)
+async def admin_add_user_submit(
+    request: Request,
+    username: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(...),
+    first_name: Optional[str] = Form(None),
+    last_name: Optional[str] = Form(None),
+    is_active: bool = Form(False),
+    is_superuser: bool = Form(False),
+    admin_user = Depends(get_admin_user)
+):
+    """User qo'shish (form submit)."""
+    errors = []
+    
+    try:
+        # Username mavjudligini tekshirish
+        existing_user = await User.filter(username=username).first()
+        if existing_user:
+            errors.append("Bu username allaqachon mavjud")
+        
+        # Email mavjudligini tekshirish
+        existing_email = await User.filter(email=email).first()
+        if existing_email:
+            errors.append("Bu email allaqachon mavjud")
+        
+        # Parol uzunligini tekshirish
+        if len(password) < 6:
+            errors.append("Parol kamida 6 ta belgidan iborat bo'lishi kerak")
+        
+        if errors:
+            return templates.TemplateResponse(
+                "add_user.html", 
+                {
+                    "request": request,
+                    "admin_user": admin_user,
+                    "errors": errors,
+                    "form_data": {
+                        "username": username,
+                        "email": email,
+                        "first_name": first_name,
+                        "last_name": last_name,
+                        "is_active": is_active,
+                        "is_superuser": is_superuser
+                    }
+                }
+            )
+        
+        # Yangi foydalanuvchi yaratish
+        user = await User.create(
+            username=username,
+            email=email,
+            password_hash=SecurityUtils.hash_password(password),
+            first_name=first_name or None,
+            last_name=last_name or None,
+            is_active=is_active,
+            is_superuser=is_superuser
+        )
+        
+        # Muvaffaqiyat xabari bilan users list ga qaytarish
+        return RedirectResponse(
+            url="/admin/users?success=user_created", 
+            status_code=302
+        )
+        
+    except Exception as e:
+        errors.append(f"Xatolik: {str(e)}")
+        return templates.TemplateResponse(
+            "add_user.html", 
+            {
+                "request": request,
+                "admin_user": admin_user,
+                "errors": errors,
+                "form_data": {
+                    "username": username,
+                    "email": email,
+                    "first_name": first_name,
+                    "last_name": last_name,
+                    "is_active": is_active,
+                    "is_superuser": is_superuser
+                }
+            }
+        )
+
+
 # User detail/edit
 @admin_router.get("/users/{user_id}", response_class=HTMLResponse)
 async def admin_user_detail(
@@ -288,6 +387,77 @@ async def admin_toggle_user_active(
         return JSONResponse(
             status_code=500,
             content={"success": False, "message": str(e)}
+        )
+
+
+@admin_router.post("/api/users")
+async def admin_create_user(
+    request: Request,
+    username: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(...),
+    first_name: Optional[str] = Form(None),
+    last_name: Optional[str] = Form(None),
+    is_active: bool = Form(True),
+    is_superuser: bool = Form(False),
+    admin_user = Depends(get_admin_user)
+):
+    """Admin orqali yangi foydalanuvchi yaratish."""
+    try:
+        # Username mavjudligini tekshirish
+        existing_user = await User.filter(username=username).first()
+        if existing_user:
+            return JSONResponse(
+                status_code=400,
+                content={"success": False, "message": "Bu username allaqachon mavjud"}
+            )
+        
+        # Email mavjudligini tekshirish
+        existing_email = await User.filter(email=email).first()
+        if existing_email:
+            return JSONResponse(
+                status_code=400,
+                content={"success": False, "message": "Bu email allaqachon mavjud"}
+            )
+        
+        # Parol uzunligini tekshirish
+        if len(password) < 6:
+            return JSONResponse(
+                status_code=400,
+                content={"success": False, "message": "Parol kamida 6 ta belgidan iborat bo'lishi kerak"}
+            )
+        
+        # Yangi foydalanuvchi yaratish
+        user = await User.create(
+            username=username,
+            email=email,
+            password_hash=SecurityUtils.hash_password(password),
+            first_name=first_name or None,
+            last_name=last_name or None,
+            is_active=is_active,
+            is_superuser=is_superuser
+        )
+        
+        return JSONResponse(
+            content={
+                "success": True, 
+                "message": f"Foydalanuvchi '{username}' muvaffaqiyatli yaratildi",
+                "user": {
+                    "id": user.id,
+                    "username": user.username,
+                    "email": user.email,
+                    "first_name": user.first_name,
+                    "last_name": user.last_name,
+                    "is_active": user.is_active,
+                    "is_superuser": user.is_superuser
+                }
+            }
+        )
+        
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "message": f"Xatolik: {str(e)}"}
         )
 
 
