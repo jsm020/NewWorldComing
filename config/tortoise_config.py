@@ -66,6 +66,8 @@ TORTOISE_ORM_TEST = {
         "models": {
             "models": [
                 "app.models.user",
+                "app.models.post",
+                "app.models.student",
                 "aerich.models",
             ],
             "default_connection": "default",
@@ -94,6 +96,8 @@ TORTOISE_ORM_PROD = {
         "models": {
             "models": [
                 "app.models.user",
+                "app.models.post",
+                "app.models.student",
                 "aerich.models",
             ],
             "default_connection": "default",

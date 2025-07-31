@@ -143,7 +143,7 @@ async def root():
     )
 
 
-# API routerlarini ulash
+# API routerlarini qo'shish
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(user.router, prefix="/api/v1")
 

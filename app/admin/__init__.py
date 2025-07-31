@@ -3,7 +3,7 @@ FastAPI Admin panel - Django admin ga o'xshash
 Oddiy HTML/CSS/JS bilan yaratilgan custom admin panel
 """
 
-from fastapi import APIRouter, Request, Form, Depends, HTTPException, status
+from fastapi import APIRouter, Request, Form, Depends, HTTPException, status, Query
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -14,6 +14,7 @@ import os
 from app.models.user import User, UserCreateIn, UserUpdateIn
 from app.core.security import SecurityUtils, get_current_user
 from app.core.utils import ResponseFormatter
+from app.admin.registry import admin_registry
 
 
 # Templates
@@ -27,17 +28,27 @@ async def get_admin_user(request: Request):
     """Admin foydalanuvchini olish."""
     try:
         # Session dan user_id olish
-        user_id = request.session.get("admin_user_id")
+        user_id = request.session.get("user_id")
         if not user_id:
-            raise HTTPException(status_code=401, detail="Login qiling")
+            return None
         
-        user = await User.get_or_none(id=user_id)
-        if not user or not user.is_superuser or not user.is_active:
-            raise HTTPException(status_code=403, detail="Admin huquqi yo'q")
-        
+        # User olish
+        user = await User.get_or_none(id=user_id, is_active=True)
         return user
-    except Exception:
-        raise HTTPException(status_code=401, detail="Login qiling")
+    except:
+        return None
+
+
+async def get_current_admin_user(request: Request):
+    """Admin user dependency - required admin user"""
+    user = await get_admin_user(request)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_302_FOUND,
+            detail="Unauthorized",
+            headers={"Location": "/admin/login"}
+        )
+    return user
 
 
 # Admin login page
@@ -78,7 +89,7 @@ async def admin_login(
             )
         
         # Session yaratish
-        request.session["admin_user_id"] = user.id
+        request.session["user_id"] = user.id  # admin_user_id emas, user_id
         
         # Last login yangilash
         user.last_login = datetime.utcnow()
@@ -102,7 +113,7 @@ async def admin_logout(request: Request):
 
 # Admin dashboard
 @admin_router.get("/dashboard", response_class=HTMLResponse)
-async def admin_dashboard(request: Request, admin_user = Depends(get_admin_user)):
+async def admin_dashboard(request: Request, admin_user = Depends(get_current_admin_user)):
     """Admin dashboard."""
     try:
         # Statistikalar
@@ -122,12 +133,16 @@ async def admin_dashboard(request: Request, admin_user = Depends(get_admin_user)
             "new_users_week": new_users_week
         }
         
+        # Ro'yxatdan o'tgan model'lar
+        registered_models = admin_registry.get_registered_models()
+        
         return templates.TemplateResponse(
             "dashboard.html", 
             {
                 "request": request, 
                 "admin_user": admin_user,
-                "stats": stats
+                "stats": stats,
+                "registered_models": registered_models
             }
         )
         
@@ -139,7 +154,7 @@ async def admin_dashboard(request: Request, admin_user = Depends(get_admin_user)
 @admin_router.get("/users", response_class=HTMLResponse)
 async def admin_users_list(
     request: Request, 
-    admin_user = Depends(get_admin_user),
+    admin_user = Depends(get_current_admin_user),
     page: int = 1,
     per_page: int = 20,
     search: Optional[str] = None
@@ -191,7 +206,7 @@ async def admin_users_list(
 
 # User qo'shish sahifasi
 @admin_router.get("/users/add", response_class=HTMLResponse)
-async def admin_add_user_page(request: Request, admin_user = Depends(get_admin_user)):
+async def admin_add_user_page(request: Request, admin_user = Depends(get_current_admin_user)):
     """User qo'shish sahifasi."""
     return templates.TemplateResponse(
         "add_user.html", 
@@ -213,7 +228,7 @@ async def admin_add_user_submit(
     last_name: Optional[str] = Form(None),
     is_active: bool = Form(False),
     is_superuser: bool = Form(False),
-    admin_user = Depends(get_admin_user)
+    admin_user = Depends(get_current_admin_user)
 ):
     """User qo'shish (form submit)."""
     errors = []
@@ -293,7 +308,7 @@ async def admin_add_user_submit(
 async def admin_user_detail(
     request: Request, 
     user_id: int,
-    admin_user = Depends(get_admin_user)
+    admin_user = Depends(get_current_admin_user)
 ):
     """Foydalanuvchi batafsil."""
     try:
@@ -318,7 +333,7 @@ async def admin_user_detail(
 @admin_router.delete("/api/users/{user_id}")
 async def admin_delete_user(
     user_id: int,
-    admin_user = Depends(get_admin_user)
+    admin_user = Depends(get_current_admin_user)
 ):
     """Foydalanuvchini o'chirish."""
     try:
@@ -352,7 +367,7 @@ async def admin_delete_user(
 @admin_router.patch("/api/users/{user_id}/toggle-active")
 async def admin_toggle_user_active(
     user_id: int,
-    admin_user = Depends(get_admin_user)
+    admin_user = Depends(get_current_admin_user)
 ):
     """Foydalanuvchi faolligini o'zgartirish."""
     try:
@@ -400,7 +415,7 @@ async def admin_create_user(
     last_name: Optional[str] = Form(None),
     is_active: bool = Form(True),
     is_superuser: bool = Form(False),
-    admin_user = Depends(get_admin_user)
+    admin_user = Depends(get_current_admin_user)
 ):
     """Admin orqali yangi foydalanuvchi yaratish."""
     try:
@@ -461,8 +476,302 @@ async def admin_create_user(
         )
 
 
+# Model CRUD endpointlari
+@admin_router.get("/{model_name}", response_class=HTMLResponse)
+async def model_list(
+    request: Request,
+    model_name: str,
+    page: int = Query(1, ge=1),
+    search: str = Query("", description="Qidiruv"),
+    current_user=Depends(get_current_admin_user)
+):
+    """Model ro'yxati sahifasi"""
+    try:
+        # Registry dan model konfiguratsiyasini olish
+        config = admin_registry.get_config(model_name)
+        if not config:
+            raise HTTPException(status_code=404, detail="Model topilmadi")
+        
+        # Model class
+        model_class = config.model
+        
+        # Qidiruv va pagination
+        per_page = config.list_per_page
+        offset = (page - 1) * per_page
+        
+        # Base query
+        query = model_class.all()
+        
+        # Search filter
+        if search and config.search_fields:
+            search_conditions = []
+            for field in config.search_fields:
+                search_conditions.append({f"{field}__icontains": search})
+            
+            # Apply search filters
+            for i, condition in enumerate(search_conditions):
+                if i == 0:
+                    query = query.filter(**condition)
+                else:
+                    query = query.union(model_class.filter(**condition))
+        
+        # Get total count
+        total = await query.count()
+        
+        # Get objects with pagination
+        objects = await query.offset(offset).limit(per_page)
+        
+        # Convert objects to dicts with proper field access
+        processed_objects = []
+        for obj in objects:
+            obj_dict = {}
+            for field in config.list_display:
+                try:
+                    if hasattr(obj, field):
+                        value = getattr(obj, field)
+                        # Handle datetime fields
+                        if hasattr(value, 'strftime'):
+                            obj_dict[field] = value
+                        else:
+                            obj_dict[field] = value
+                    else:
+                        obj_dict[field] = None
+                except:
+                    obj_dict[field] = None
+            
+            # Add special properties if they exist
+            if hasattr(obj, 'full_name'):
+                obj_dict['full_name'] = obj.full_name
+            if hasattr(obj, 'age'):
+                obj_dict['age'] = obj.age
+                
+            # Store original object for access
+            obj_dict['_original'] = obj
+            processed_objects.append(obj_dict)
+        
+        # Calculate pagination
+        total_pages = (total + per_page - 1) // per_page
+        
+        return templates.TemplateResponse(
+            "model_list.html",
+            {
+                "request": request,
+                "config": config,
+                "model_name": model_name,
+                "objects": processed_objects,
+                "page": page,
+                "total_pages": total_pages,
+                "total": total,
+                "search": search,
+                "per_page": per_page
+            }
+        )
+    except Exception as e:
+        return templates.TemplateResponse(
+            "error.html",
+            {"request": request, "error": str(e)}
+        )
+
+
+@admin_router.get("/{model_name}/add", response_class=HTMLResponse)
+async def model_add_form(
+    request: Request,
+    model_name: str,
+    current_user=Depends(get_current_admin_user)
+):
+    """Model qo'shish sahifasi"""
+    try:
+        config = admin_registry.get_config(model_name)
+        if not config or not config.can_add:
+            raise HTTPException(status_code=404, detail="Model yoki ruxsat topilmadi")
+        
+        return templates.TemplateResponse(
+            "model_add.html",
+            {
+                "request": request,
+                "config": config,
+                "model_name": model_name
+            }
+        )
+    except Exception as e:
+        return templates.TemplateResponse(
+            "error.html",
+            {"request": request, "error": str(e)}
+        )
+
+
+@admin_router.post("/{model_name}/add")
+async def model_add_submit(
+    request: Request,
+    model_name: str,
+    current_user=Depends(get_current_admin_user)
+):
+    """Model qo'shish submit"""
+    try:
+        config = admin_registry.get_config(model_name)
+        if not config or not config.can_add:
+            raise HTTPException(status_code=404, detail="Model yoki ruxsat topilmadi")
+        
+        # Form datalarini olish
+        form_data = await request.form()
+        data = dict(form_data)
+        
+        # Model yaratish
+        model_class = config.model
+        obj = await model_class.create(**data)
+        
+        return RedirectResponse(
+            url=f"/admin/{model_name}?success=created",
+            status_code=302
+        )
+    except Exception as e:
+        return RedirectResponse(
+            url=f"/admin/{model_name}/add?error={str(e)}",
+            status_code=302
+        )
+
+
+@admin_router.get("/{model_name}/{object_id}", response_class=HTMLResponse)
+async def model_detail(
+    request: Request,
+    model_name: str,
+    object_id: int,
+    current_user=Depends(get_current_admin_user)
+):
+    """Model detail sahifasi"""
+    try:
+        config = admin_registry.get_config(model_name)
+        if not config:
+            raise HTTPException(status_code=404, detail="Model topilmadi")
+        
+        # Object olish
+        model_class = config.model
+        obj = await model_class.get(id=object_id)
+        
+        return templates.TemplateResponse(
+            "model_detail.html",
+            {
+                "request": request,
+                "config": config,
+                "model_name": model_name,
+                "object": obj,
+                "object_id": object_id
+            }
+        )
+    except Exception as e:
+        return templates.TemplateResponse(
+            "error.html",
+            {"request": request, "error": str(e)}
+        )
+
+
+@admin_router.get("/{model_name}/{object_id}/edit", response_class=HTMLResponse)
+async def model_edit_form(
+    request: Request,
+    model_name: str,
+    object_id: int,
+    current_user=Depends(get_current_admin_user)
+):
+    """Model tahrirlash sahifasi"""
+    try:
+        config = admin_registry.get_config(model_name)
+        if not config or not config.can_edit:
+            raise HTTPException(status_code=404, detail="Model yoki ruxsat topilmadi")
+        
+        # Object olish
+        model_class = config.model
+        obj = await model_class.get(id=object_id)
+        
+        return templates.TemplateResponse(
+            "model_edit.html",
+            {
+                "request": request,
+                "config": config,
+                "model_name": model_name,
+                "object": obj,
+                "object_id": object_id
+            }
+        )
+    except Exception as e:
+        return templates.TemplateResponse(
+            "error.html",
+            {"request": request, "error": str(e)}
+        )
+
+
+@admin_router.post("/{model_name}/{object_id}/edit")
+async def model_edit_submit(
+    request: Request,
+    model_name: str,
+    object_id: int,
+    current_user=Depends(get_current_admin_user)
+):
+    """Model tahrirlash submit"""
+    try:
+        config = admin_registry.get_config(model_name)
+        if not config or not config.can_edit:
+            raise HTTPException(status_code=404, detail="Model yoki ruxsat topilmadi")
+        
+        # Object olish
+        model_class = config.model
+        obj = await model_class.get(id=object_id)
+        
+        # Form datalarini olish
+        form_data = await request.form()
+        data = dict(form_data)
+        
+        # Object yangilash
+        for field, value in data.items():
+            if hasattr(obj, field):
+                setattr(obj, field, value)
+        
+        await obj.save()
+        
+        return RedirectResponse(
+            url=f"/admin/{model_name}?success=updated",
+            status_code=302
+        )
+    except Exception as e:
+        return RedirectResponse(
+            url=f"/admin/{model_name}/{object_id}/edit?error={str(e)}",
+            status_code=302
+        )
+
+
+@admin_router.delete("/{model_name}/{object_id}")
+async def model_delete(
+    model_name: str,
+    object_id: int,
+    current_user=Depends(get_current_admin_user)
+):
+    """Model o'chirish API"""
+    try:
+        config = admin_registry.get_config(model_name)
+        if not config or not config.can_delete:
+            raise HTTPException(status_code=404, detail="Model yoki ruxsat topilmadi")
+        
+        # Object o'chirish
+        model_class = config.model
+        obj = await model_class.get(id=object_id)
+        await obj.delete()
+        
+        return {"success": True, "message": "Muvaffaqiyatli o'chirildi"}
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "message": f"Xatolik: {str(e)}"}
+        )
+
+
 def setup_admin_panel(app):
     """Admin panel ni asosiy ilovaga ulash."""
+    # Admin konfiguratsiyalarini import qilish
+    from app.admin import admin
+    
+    # Auto-discovery: barcha model'larni avtomatik ro'yxatdan o'tkazish
+    from app.admin.autodiscovery import auto_register_models
+    auto_register_models()
+    
     # Static files uchun papka yaratish
     static_dir = "app/admin/static"
     templates_dir = "app/admin/templates"

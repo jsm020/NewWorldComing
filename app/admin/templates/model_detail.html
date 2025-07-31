@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+
+{% block title %}{{ config.name }} #{{ object.id }} - Admin Panel{% endblock %}
+
+{% block page_title %}
+<i class="{{ config.icon }}"></i> {{ config.name }} #{{ object.id }}
+{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="/admin/dashboard">Dashboard</a></li>
+<li class="breadcrumb-item"><a href="/admin/{{ model_name }}">{{ config.name_plural }}</a></li>
+<li class="breadcrumb-item active">{{ config.name }} #{{ object.id }}</li>
+{% endblock %}
+
+{% block content %}
+<!-- Actions -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="mb-0">{{ config.name }} ma'lumotlari</h4>
+        <small class="text-muted">ID: {{ object.id }}</small>
+    </div>
+    <div>
+        <a href="/admin/{{ model_name }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Orqaga
+        </a>
+        {% if config.can_edit %}
+        <a href="/admin/{{ model_name }}/{{ object.id }}/edit" class="btn btn-warning">
+            <i class="fas fa-edit"></i> Tahrirlash
+        </a>
+        {% endif %}
+        {% if config.can_delete %}
+        <button type="button" class="btn btn-danger" onclick="deleteObject('{{ model_name }}', {{ object.id }})">
+            <i class="fas fa-trash"></i> O'chirish
+        </button>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Object Details -->
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-info-circle"></i> Asosiy ma'lumotlar
+                </h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    {% for field in config.fields %}
+                    <tr>
+                        <td width="200" class="fw-bold text-muted">{{ field|title }}:</td>
+                        <td>
+                            {% set value = object[field] if object[field] is defined else getattr(object, field, None) %}
+                            {% if field == 'is_active' %}
+                                {% if value %}
+                                    <span class="badge bg-success">Faol</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Nofaol</span>
+                                {% endif %}
+                            {% elif field == 'is_superuser' %}
+                                {% if value %}
+                                    <span class="badge bg-warning">Superuser</span>
+                                {% else %}
+                                    <span class="badge bg-light text-dark">Oddiy foydalanuvchi</span>
+                                {% endif %}
+                            {% elif field == 'created_at' or field == 'updated_at' or field == 'last_login' %}
+                                {% if value %}
+                                    <span class="text-muted">{{ value.strftime('%d.%m.%Y %H:%M:%S') }}</span>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            {% elif field == 'enrollment_date' or field == 'graduation_date' or field == 'birth_date' %}
+                                {% if value %}
+                                    <span class="text-muted">{{ value.strftime('%d.%m.%Y') }}</span>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            {% elif field == 'email' %}
+                                {% if value %}
+                                    <a href="mailto:{{ value }}" class="text-primary">{{ value }}</a>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            {% elif field == 'phone' %}
+                                {% if value %}
+                                    <a href="tel:{{ value }}" class="text-primary">{{ value }}</a>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            {% elif field == 'address' or field == 'content' %}
+                                {% if value %}
+                                    <div class="border rounded p-2 bg-light">
+                                        {{ value[:200] }}{% if value|length > 200 %}...{% endif %}
+                                    </div>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            {% elif field == 'gpa' %}
+                                {% if value %}
+                                    <span class="badge bg-info">{{ value }}</span>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            {% else %}
+                                {% if value is not none %}
+                                    {{ value }}
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <!-- System Info -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-cog"></i> Tizim ma'lumotlari
+                </h6>
+            </div>
+            <div class="card-body">
+                {% for field in config.readonly_fields %}
+                    {% set value = object[field] if object[field] is defined else getattr(object, field, None) %}
+                    <div class="mb-2">
+                        <small class="text-muted d-block">{{ field|title }}</small>
+                        {% if field == 'created_at' or field == 'updated_at' or field == 'last_login' %}
+                            {% if value %}
+                                <span class="small">{{ value.strftime('%d.%m.%Y %H:%M:%S') }}</span>
+                            {% else %}
+                                <span class="small text-muted">-</span>
+                            {% endif %}
+                        {% elif field == 'full_name' %}
+                            {% if object.full_name is defined %}
+                                <span class="small">{{ object.full_name }}</span>
+                            {% else %}
+                                <span class="small text-muted">-</span>
+                            {% endif %}
+                        {% elif field == 'age' %}
+                            {% if object.age is defined and object.age %}
+                                <span class="small">{{ object.age }} yosh</span>
+                            {% else %}
+                                <span class="small text-muted">-</span>
+                            {% endif %}
+                        {% else %}
+                            {% if value is not none %}
+                                <span class="small">{{ value }}</span>
+                            {% else %}
+                                <span class="small text-muted">-</span>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-bolt"></i> Tezkor amallar
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    {% if config.can_edit %}
+                    <a href="/admin/{{ model_name }}/{{ object.id }}/edit" class="btn btn-outline-warning btn-sm">
+                        <i class="fas fa-edit"></i> Tahrirlash
+                    </a>
+                    {% endif %}
+                    
+                    {% if model_name == 'user' and object.id != request.session.get('user_id') %}
+                    <button type="button" class="btn btn-outline-info btn-sm" onclick="toggleActive({{ object.id }})">
+                        <i class="fas fa-toggle-on"></i> 
+                        {% if object.is_active %}Nofaol qilish{% else %}Faollashtirish{% endif %}
+                    </button>
+                    {% endif %}
+                    
+                    <a href="/admin/{{ model_name }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-list"></i> Barcha {{ config.name_plural }}
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function deleteObject(modelName, objectId) {
+    if (confirm('Rostdan ham o\'chirmoqchimisiz? Bu amal qaytarilmaydi.')) {
+        fetch(`/admin/${modelName}/${objectId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.href = `/admin/${modelName}?success=deleted`;
+            } else {
+                alert('Xatolik: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Xatolik yuz berdi');
+        });
+    }
+}
+
+function toggleActive(userId) {
+    fetch(`/admin/api/users/${userId}/toggle-active`, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Xatolik: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Xatolik yuz berdi');
+    });
+}
+</script>
+{% endblock %}

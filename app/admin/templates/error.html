@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}Xatolik - Admin Panel{% endblock %}
+
+{% block page_title %}
+<i class="fas fa-exclamation-triangle text-danger"></i> Xatolik
+{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="/admin/dashboard">Dashboard</a></li>
+<li class="breadcrumb-item active">Xatolik</li>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-exclamation-triangle"></i> Xatolik yuz berdi
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-danger">
+                    <h6 class="alert-heading">Quyidagi xatolik yuz berdi:</h6>
+                    <p class="mb-0">{{ error }}</p>
+                </div>
+                
+                <div class="text-center mt-4">
+                    <a href="/admin/dashboard" class="btn btn-primary">
+                        <i class="fas fa-home"></i> Dashboard ga qaytish
+                    </a>
+                    <button onclick="history.back()" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i> Orqaga
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
