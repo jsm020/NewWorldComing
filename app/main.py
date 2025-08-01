@@ -147,10 +147,6 @@ async def root():
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(user.router, prefix="/api/v1")
 
-# Telegram webhook router qo'shish
-from app.api.telegram_webhook import router as telegram_router
-app.include_router(telegram_router, prefix="/api/v1")
-
 # 2FA Status API qo'shish
 from app.admin.status_api import router as status_router
 app.include_router(status_router)
