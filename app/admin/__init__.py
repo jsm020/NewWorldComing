@@ -64,43 +64,174 @@ async def admin_login(
     username: str = Form(...),
     password: str = Form(...)
 ):
-    """Admin login."""
+    """Admin login with Two Factor Authentication support."""
+    # Foydalanuvchini topish
+    user = await User.filter(username=username).first()
+    if not user:
+        return templates.TemplateResponse(
+            "login.html", 
+            {"request": request, "error": "Username yoki parol noto'g'ri"}
+        )
+    
+    # Superuser va faollikni tekshirish
+    if not user.is_superuser or not user.is_active:
+        return templates.TemplateResponse(
+            "login.html", 
+            {"request": request, "error": "Admin huquqi yo'q"}
+        )
+    
+    # Parolni tekshirish
+    if not SecurityUtils.verify_password(password, user.password_hash):
+        return templates.TemplateResponse(
+            "login.html", 
+            {"request": request, "error": "Username yoki parol noto'g'ri"}
+        )
+    
+    # IP address va user agent olish
+    ip_address = request.client.host
+    user_agent = request.headers.get("user-agent", "Unknown")
+    
     try:
-        # Foydalanuvchini topish
-        user = await User.filter(username=username).first()
-        if not user:
+        # 2FA modellarini import qilish
+        from app.models.admin_security import AdminSecurity, DeviceBlock
+        from app.services.telegram_bot import get_telegram_service
+        
+        # Device block tekshirish (vaqt tekshiruvisiz)
+        device_blocked = await DeviceBlock.filter(
+            user=user.id,
+            ip_address=ip_address,
+            is_active=True
+        ).exists()
+        
+        if device_blocked:
             return templates.TemplateResponse(
                 "login.html", 
-                {"request": request, "error": "Username yoki parol noto'g'ri"}
+                {"request": request, "error": "Bu qurilma bloklangan"}
             )
         
-        # Superuser va faollikni tekshirish
-        if not user.is_superuser or not user.is_active:
-            return templates.TemplateResponse(
-                "login.html", 
-                {"request": request, "error": "Admin huquqi yo'q"}
-            )
+        # 2FA tekshirish - qayta yoqamiz
+        admin_security = await AdminSecurity.get_or_none(user=user)
         
-        # Parolni tekshirish
-        if not SecurityUtils.verify_password(password, user.password_hash):
-            return templates.TemplateResponse(
-                "login.html", 
-                {"request": request, "error": "Username yoki parol noto'g'ri"}
-            )
+        if admin_security and admin_security.telegram_enabled and admin_security.require_confirmation:
+            # 2FA talab qilinadi
+            telegram_service = await get_telegram_service(user.id)
+            
+            if telegram_service:
+                # Telegram confirmation yuborish
+                verification_code = await telegram_service.send_login_confirmation(
+                    user_id=user.id,
+                    ip_address=ip_address,
+                    user_agent=user_agent,
+                    location="Unknown"
+                )
+                
+                if verification_code:
+                    # Pure Telegram 2FA - faqat Telegram orqali tasdiqlash
+                    # Foydalanuvchi Telegram'da confirm/deny qiladi
+                    return templates.TemplateResponse(
+                        "login_waiting.html", 
+                        {
+                            "request": request, 
+                            "verification_code": verification_code,
+                            "message": "Telegram'da login tasdiqlash xabari yuborildi. Telegram bot'dan javob bering."
+                        }
+                    )
+                else:
+                    return templates.TemplateResponse(
+                        "login.html", 
+                        {"request": request, "error": "2FA xabar yuborishda xatolik."}
+                    )
+            else:
+                return templates.TemplateResponse(
+                    "login.html", 
+                    {"request": request, "error": "2FA sozlanmagan."}
+                )
         
-        # Session yaratish
-        request.session["user_id"] = user.id  # admin_user_id emas, user_id
-        
-        # Last login yangilash
-        user.last_login = datetime.utcnow()
+        # 2FA yo'q yoki xatolik bo'lgan holda oddiy login
+        request.session["user_id"] = user.id
+        user.last_login = datetime.now()
         await user.save()
-        
         return RedirectResponse(url="/admin/dashboard", status_code=302)
         
     except Exception as e:
+        print(f"Login xatolik: {e}")
         return templates.TemplateResponse(
             "login.html", 
             {"request": request, "error": f"Xatolik: {str(e)}"}
+        )
+@admin_router.post("/verify-2fa")
+async def verify_2fa(
+    request: Request,
+    verification_code: str = Form(...),
+    username: str = Form(...)
+):
+    """Two Factor Authentication verification check."""
+    try:
+        from app.models.admin_security import PendingVerification, LoginAttempt
+        
+        # Verification topish
+        verification = await PendingVerification.get_or_none(
+            verification_code=verification_code,
+            is_used=False
+        ).select_related('user')
+        
+        if not verification:
+            return templates.TemplateResponse(
+                "login_2fa.html", 
+                {
+                    "request": request, 
+                    "verification_code": verification_code,
+                    "username": username,
+                    "error": "Verification kod topilmadi"
+                }
+            )
+        
+        # Vaqt tekshiruvisiz davom etamiz
+        # Login attempt ni tekshirish
+        attempt = await LoginAttempt.get(id=verification.attempt_id)
+        
+        if attempt.status == "confirmed":
+            # Tasdiqlangan
+            await verification.update_from_dict({"is_used": True})
+            
+            # Session yaratish
+            request.session["user_id"] = verification.user.id
+            
+            # Last login yangilash
+            user = await User.get(id=verification.user.id)
+            user.last_login = datetime.now()
+            await user.save()
+            
+            return RedirectResponse(url="/admin/dashboard", status_code=302)
+            
+        elif attempt.status == "denied":
+            # Rad etilgan
+            await verification.update_from_dict({"is_used": True})
+            return templates.TemplateResponse(
+                "login.html", 
+                {"request": request, "error": "Login rad etildi va qurilma bloklandi"}
+            )
+        else:
+            # Hali kutilmoqda
+            return templates.TemplateResponse(
+                "login_2fa.html", 
+                {
+                    "request": request, 
+                    "verification_code": verification_code,
+                    "username": username,
+                    "message": "Hali Telegram dan javob kutilmoqda..."
+                }
+            )
+        
+    except Exception as e:
+        return templates.TemplateResponse(
+            "login_2fa.html", 
+            {
+                "request": request, 
+                "verification_code": verification_code,
+                "username": username,
+                "error": f"Xatolik: {str(e)}"
+            }
         )
 
 
@@ -123,7 +254,7 @@ async def admin_dashboard(request: Request, admin_user = Depends(get_current_adm
         
         # Yangi foydalanuvchilar (oxirgi 7 kun)
         from datetime import timedelta
-        week_ago = datetime.utcnow() - timedelta(days=7)
+        week_ago = datetime.now() - timedelta(days=7)
         new_users_week = await User.filter(created_at__gte=week_ago).count()
         
         stats = {

@@ -10,6 +10,9 @@ import hashlib
 import html
 import os
 import time
+import asyncio
+from getpass import getpass
+import bcrypt
 from datetime import datetime, date, timedelta
 from typing import Any, Dict, List, Optional, Union
 from decimal import Decimal
@@ -21,6 +24,9 @@ from passlib.context import CryptContext
 from jose import jwt, JWTError
 from fastapi import Request, status, HTTPException
 from fastapi.responses import JSONResponse
+from tortoise import Tortoise
+
+from config.tortoise_config import TORTOISE_ORM
 
 
 # JWT va parol konfiguratsiyasi
@@ -28,6 +34,263 @@ SECRET_KEY = os.getenv("SECRET_KEY", "supersecretkey-change-in-production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# Rate limiting
+_RATE_LIMIT = {}
+RATE_LIMIT_WINDOW = 60  # soniya
+RATE_LIMIT_MAX = 30    # 1 daqiqada 30 so'rov
+
+
+async def create_superuser():
+    """
+    Django-style superuser yaratish commandi
+    """
+    # Tortoise ORM ni ishga tushirish
+    await Tortoise.init(config=TORTOISE_ORM)
+    await Tortoise.generate_schemas()
+    
+    # Import qilish (circular import oldini olish uchun)
+    from app.models.user import User
+    from app.models.admin_security import AdminSecurity
+    from app.services.telegram_bot import TelegramBotService
+    
+    print("🚀 SuperUser yaratish boshlandi...")
+    print("=" * 50)
+    
+    # Foydalanuvchi ma'lumotlarini olish
+    while True:
+        username = input("👤 Username kiriting: ").strip()
+        if username:
+            # Mavjudligini tekshirish
+            existing_user = await User.get_or_none(username=username)
+            if existing_user:
+                print(f"❌ '{username}' username allaqachon mavjud!")
+                continue
+            break
+        print("❌ Username bo'sh bo'lishi mumkin emas!")
+    
+    while True:
+        email = input("📧 Email kiriting: ").strip()
+        if email and "@" in email:
+            # Mavjudligini tekshirish  
+            existing_email = await User.get_or_none(email=email)
+            if existing_email:
+                print(f"❌ '{email}' email allaqachon mavjud!")
+                continue
+            break
+        print("❌ To'g'ri email kiriting!")
+    
+    while True:
+        password = getpass("🔐 Parol kiriting: ")
+        if len(password) >= 8:
+            password_confirm = getpass("🔐 Parolni takrorlang: ")
+            if password == password_confirm:
+                break
+            print("❌ Parollar mos emas!")
+        else:
+            print("❌ Parol kamida 8 ta belgidan iborat bo'lishi kerak!")
+    
+    full_name = input("👥 To'liq ism (ixtiyoriy): ").strip()
+    
+    try:
+        # Parolni hash qilish
+        salt = bcrypt.gensalt()
+        hashed_password = bcrypt.hashpw(password.encode('utf-8'), salt)
+        
+        # Superuser yaratish
+        user = await User.create(
+            username=username,
+            email=email,
+            password_hash=hashed_password.decode('utf-8'),
+            full_name=full_name or username,
+            is_active=True,
+            is_superuser=True,
+            role='admin'
+        )
+        
+        print(f"✅ SuperUser '{username}' muvaffaqiyatli yaratildi!")
+        print("=" * 50)
+        
+        # 2FA sozlash taklifi
+        print("\n🔐 2-Etapli Himoya (2FA) Sozlash")
+        print("=" * 50)
+        
+        enable_2fa = input("❓ 2-etapli himoyani yoqmoqchimisiz? (ha/yo'q): ").strip().lower()
+        
+        if enable_2fa in ['ha', 'yes', 'y', '1', 'true']:
+            print("\n📱 Telegram Bot orqali 2FA sozlash")
+            print("-" * 30)
+            
+            # Bot token olish
+            bot_token = None
+            while True:
+                bot_token = input("🤖 Telegram Bot Token kiriting: ").strip()
+                if bot_token:
+                    # Bot tokenini tekshirish
+                    print("🔄 Bot ulanishini tekshiryapman...")
+                    telegram_service = TelegramBotService(bot_token)
+                    test_result = await telegram_service.test_bot_connection()
+                    
+                    if test_result["success"]:
+                        bot_info = test_result["bot_info"]
+                        print(f"✅ Bot ulanishi muvaffaqiyatli!")
+                        print(f"🤖 Bot nomi: @{bot_info.get('username', 'Unknown')}")
+                        print(f"📝 Bot tavsifi: {bot_info.get('first_name', 'Unknown')}")
+                        break
+                    else:
+                        print(f"❌ Bot ulanishida xatolik: {test_result['message']}")
+                        retry = input("🔄 Qayta urinib ko'rasizmi? (ha/yo'q): ").strip().lower()
+                        if retry not in ['ha', 'yes', 'y', '1', 'true']:
+                            print("⏩ 2FA sozlash bekor qilindi")
+                            bot_token = None
+                            break
+                else:
+                    print("❌ Bot token bo'sh bo'lishi mumkin emas!")
+            
+            if bot_token:
+                # Chat ID olish
+                print("\n💬 Telegram Chat ID sozlash")
+                print("-" * 30)
+                print("📋 Quyidagi usullardan birini tanlang:")
+                print("1️⃣  Chat ID ni qo'lda kiriting")
+                print("2️⃣  Bot ga '/start' xabar yuboring va ID avtomatik olinadi")
+                
+                chat_id_method = input("🔢 Usulni tanlang (1/2): ").strip()
+                
+                chat_id = None
+                
+                if chat_id_method == "1":
+                    # Qo'lda kiritish
+                    while True:
+                        chat_id_input = input("💬 Chat ID kiriting: ").strip()
+                        if chat_id_input:
+                            # Chat ID ni tekshirish
+                            print("🔄 Chat ID ni tekshiryapman...")
+                            test_message = "🔐 2FA Test - Chat ulanishi muvaffaqiyatli!"
+                            success = await telegram_service.send_message(chat_id_input, test_message)
+                            
+                            if success:
+                                chat_id = chat_id_input
+                                print("✅ Chat ID muvaffaqiyatli tekshirildi!")
+                                break
+                            else:
+                                print("❌ Chat ID noto'g'ri yoki bot xabar yubora olmaydi")
+                                retry = input("🔄 Qayta urinib ko'rasizmi? (ha/yo'q): ").strip().lower()
+                                if retry not in ['ha', 'yes', 'y', '1', 'true']:
+                                    break
+                        else:
+                            print("❌ Chat ID bo'sh bo'lishi mumkin emas!")
+                
+                elif chat_id_method == "2":
+                    # Bot updates orqali olish
+                    print(f"📱 @{bot_info.get('username', 'your_bot')} ga '/start' xabar yuboring...")
+                    print("⏰ 30 soniya kutishim kerak...")
+                    
+                    # Sodda polling (real loyihada webhook ishlatish kerak)
+                    for i in range(6):  # 30 soniya = 6 x 5 soniya
+                        try:
+                            url = f"https://api.telegram.org/bot{bot_token}/getUpdates"
+                            import httpx
+                            async with httpx.AsyncClient() as client:
+                                response = await client.get(url)
+                                if response.status_code == 200:
+                                    updates = response.json().get("result", [])
+                                    
+                                    # Eng oxirgi '/start' xabarini topish
+                                    for update in reversed(updates):
+                                        if "message" in update:
+                                            message = update["message"]
+                                            if message.get("text", "").strip() == "/start":
+                                                chat_id = str(message["chat"]["id"])
+                                                username_tg = message["from"].get("username", "Unknown")
+                                                print(f"✅ Chat ID topildi: {chat_id}")
+                                                print(f"👤 Foydalanuvchi: @{username_tg}")
+                                                
+                                                # Test xabar yuborish
+                                                test_message = "🔐 2FA Test - Chat ulanishi muvaffaqiyatli!"
+                                                await telegram_service.send_message(chat_id, test_message)
+                                                break
+                                    
+                                    if chat_id:
+                                        break
+                                        
+                        except Exception as e:
+                            print(f"🔄 Xatolik: {e}")
+                        
+                        if i < 5:  # Oxirgi iteratsiya emas
+                            print(f"⏳ Kutishda... ({(i+1)*5}/30 soniya)")
+                            await asyncio.sleep(5)
+                    
+                    if not chat_id:
+                        print("❌ Chat ID avtomatik olinmadi")
+                        print("💡 Qo'lda kiritib ko'ring yoki keyinroq sozlang")
+                
+                # AdminSecurity yaratish
+                if chat_id:
+                    try:
+                        admin_security = await AdminSecurity.create(
+                            user_id=user.id,
+                            telegram_enabled=True,
+                            telegram_bot_token=bot_token,
+                            telegram_chat_id=chat_id,
+                            require_confirmation=True,
+                            auto_block_suspicious=True,
+                            max_failed_attempts=3
+                        )
+                        
+                        print("\n🎉 2FA muvaffaqiyatli sozlandi!")
+                        print("=" * 50)
+                        print("✅ Telegram bot ulandi")
+                        print("✅ Chat ID sozlandi")
+                        print("✅ Avtomatik tasdiqlov yoqildi")
+                        print("✅ Shubhali faollikni bloklash yoqildi")
+                        print("✅ Maksimal urinishlar: 3 marta")
+                        
+                        # Oxirgi test xabari
+                        welcome_message = f"""
+🎉 <b>2FA Muvaffaqiyatli Sozlandi!</b>
+
+👤 <b>Admin:</b> {username}
+📧 <b>Email:</b> {email}
+🔐 <b>2FA:</b> Faol
+
+🛡️ <b>Xavfsizlik sozlamalari:</b>
+✅ Telegram tasdiqlov
+✅ Avtomatik bloklash
+✅ Maksimal urinishlar: 3
+
+💡 <i>Endi admin panelga kirishda Telegram orqali tasdiqlash talab qilinadi</i>
+                        """
+                        
+                        await telegram_service.send_message(chat_id, welcome_message)
+                        
+                    except Exception as e:
+                        print(f"❌ 2FA sozlashda xatolik: {e}")
+                        print("⚠️  SuperUser yaratildi, lekin 2FA sozlanmadi")
+                else:
+                    print("⚠️  Chat ID olinmadi, 2FA keyinroq sozlanishi mumkin")
+            else:
+                print("⚠️  Bot token olinmadi, 2FA keyinroq sozlanishi mumkin")
+        else:
+            print("⏩ 2FA sozlash bekor qilindi")
+            print("💡 Keyinroq admin panel orqali sozlashingiz mumkin")
+        
+        print("\n🎉 SuperUser yaratish jarayoni tugallandi!")
+        print("=" * 50)
+        print(f"👤 Username: {username}")
+        print(f"📧 Email: {email}")
+        print(f"🔐 2FA: {'Faol' if enable_2fa in ['ha', 'yes', 'y', '1', 'true'] and 'chat_id' in locals() and chat_id else 'Faol emas'}")
+        print("🌐 Admin panel: http://localhost:8000/admin")
+        
+    except Exception as e:
+        print(f"❌ SuperUser yaratishda xatolik: {e}")
+    finally:
+        await Tortoise.close_connections()
+
+
+def run_create_superuser():
+    """Sync wrapper for create_superuser"""
+    asyncio.run(create_superuser())
 
 # Rate limiting
 _RATE_LIMIT = {}
@@ -130,7 +393,7 @@ class SecurityUtils:
     def create_access_token(data: dict, expires_delta: timedelta = None):
         """JWT token yaratish."""
         to_encode = data.copy()
-        expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+        expire = datetime.now() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
         to_encode.update({"exp": expire})
         encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
         return encoded_jwt

@@ -39,22 +39,13 @@ DB_URL = get_database_url()
 
 # Tortoise ORM konfiguratsiyasi
 TORTOISE_ORM = {
-    "connections": {
-        "default": DB_URL
-    },
+    "connections": {"default": "sqlite://db.sqlite3"},
     "apps": {
         "models": {
-            "models": [
-                "app.models.user",           # User modeli
-                # "app.models.product",      # Misol uchun product modeli
-                # "app.models.order",        # Misol uchun order modeli
-                "aerich.models",            # Migration uchun aerich
-            ],
+            "models": ["app.models.user", "app.models.admin_security", "aerich.models"],
             "default_connection": "default",
         },
     },
-    "use_tz": True,
-    "timezone": "UTC",
 }
 
 # Test uchun alohida konfiguratsiya
