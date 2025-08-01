@@ -3,105 +3,172 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>2FA Kutish - Admin Panel</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <title>2FA Tasdiqlash - Admin Panel</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
     <style>
         body {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            min-height: 100vh;
         }
-        .waiting-card {
-            background: white;
+        .login-container {
+            max-width: 450px;
+            margin: 0 auto;
+            padding-top: 8vh;
+        }
+        .login-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
             border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            max-width: 500px;
-            width: 100%;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
         }
-        .spinner-border {
-            width: 3rem;
-            height: 3rem;
+        .login-header {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            border-radius: 15px 15px 0 0;
+            padding: 2rem;
+            text-align: center;
         }
-        .pulse {
+        .login-body {
+            padding: 2rem;
+        }
+        .telegram-icon {
+            font-size: 3rem;
+            color: #0088cc;
             animation: pulse 2s infinite;
         }
         @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
         }
-        .telegram-icon {
-            font-size: 4rem;
-            color: #0088cc;
-            margin-bottom: 1rem;
+        .spinner-border {
+            width: 2.5rem;
+            height: 2.5rem;
+            animation: spin 1s linear infinite;
+        }
+        .verification-code {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border: 2px dashed #007bff;
+            border-radius: 10px;
+            padding: 1rem;
+            font-family: 'Courier New', monospace;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #007bff;
+            text-align: center;
+            margin: 1rem 0;
+        }
+        .instruction-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #007bff;
+            padding: 1rem;
+            margin: 0.5rem 0;
+        }
+        .btn-action {
+            border-radius: 10px;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-action:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            animation: blink 1.5s infinite;
+        }
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.5; }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="waiting-card p-5 text-center">
-            <div class="telegram-icon pulse">
-                <i class="fab fa-telegram"></i>
-            </div>
-            
-            <h2 class="mb-4">
-                <i class="fas fa-shield-alt text-primary"></i>
-                2FA Tasdiqlash
-            </h2>
-            
-            <div class="alert alert-info" role="alert">
-                <i class="fas fa-info-circle"></i>
-                {{ message }}
-            </div>
-            
-            <div class="my-4">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Kutilmoqda...</span>
+        <div class="login-container">
+            <div class="login-card">
+                <div class="login-header">
+                    <div class="telegram-icon mb-3">
+                        <i class="fab fa-telegram"></i>
+                    </div>
+                    <h2><i class="fas fa-shield-alt"></i> 2FA Tasdiqlash</h2>
+                    <p class="mb-0">JAVODEV - Xavfsizlik tekshiruvi</p>
                 </div>
-                <p class="mt-3 text-muted">Telegram bot'dan javob kutilmoqda...</p>
-            </div>
-            
-            <div class="bg-light p-3 rounded mb-4">
-                <small class="text-muted">
-                    <strong>Verification Code:</strong> <code>{{ verification_code }}</code>
-                </small>
-            </div>
-            
-            <div class="row text-start">
-                <div class="col-md-6">
-                    <h6><i class="fas fa-check-circle text-success"></i> Tasdiqlash uchun:</h6>
-                    <p class="small text-muted">Telegram'da <code>/confirm_{{ verification_code }}</code> yuboring</p>
+                
+                <div class="login-body">
+                    <div class="alert alert-info text-center" role="alert">
+                        <i class="fas fa-info-circle"></i>
+                        {{ message }}
+                    </div>
+                    
+                    <div class="text-center my-4">
+                        <div class="status-indicator">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Kutilmoqda...</span>
+                            </div>
+                            <span class="text-muted">Telegram bot'dan javob kutilmoqda...</span>
+                        </div>
+                    </div>
+                    
+                    <div class="verification-code">
+                        {{ verification_code }}
+                    </div>
+                    
+                    <div class="row g-2 mb-4">
+                        <div class="col-md-6">
+                            <div class="instruction-card">
+                                <h6 class="text-success mb-2">
+                                    <i class="fas fa-check-circle"></i> Tasdiqlash
+                                </h6>
+                                <code class="small">/confirm_{{ verification_code }}</code>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="instruction-card">
+                                <h6 class="text-danger mb-2">
+                                    <i class="fas fa-times-circle"></i> Rad etish
+                                </h6>
+                                <code class="small">/deny_{{ verification_code }}</code>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                        <button class="btn btn-info btn-action" onclick="openTelegramBot()">
+                            <i class="fab fa-telegram"></i> Telegram Bot
+                        </button>
+                        
+                        <button class="btn btn-primary btn-action" onclick="checkStatus()">
+                            <i class="fas fa-sync-alt"></i> Tekshirish
+                        </button>
+                        
+                        <a href="/admin/login" class="btn btn-outline-secondary btn-action">
+                            <i class="fas fa-arrow-left"></i> Qaytish
+                        </a>
+                    </div>
+                    
+                    <div class="text-center mt-4">
+                        <small class="text-muted">
+                            <i class="fas fa-clock text-warning"></i>
+                            Bu kod 5 daqiqada o'z kuchini yo'qotadi
+                        </small>
+                    </div>
                 </div>
-                <div class="col-md-6">
-                    <h6><i class="fas fa-times-circle text-danger"></i> Rad etish uchun:</h6>
-                    <p class="small text-muted">Telegram'da <code>/deny_{{ verification_code }}</code> yuboring</p>
-                </div>
             </div>
             
-            <hr>
-            
-            <div class="d-flex justify-content-between align-items-center">
-                <a href="/admin/login" class="btn btn-outline-secondary">
-                    <i class="fas fa-arrow-left"></i> Login'ga qaytish
+            <div class="text-center mt-4">
+                <a href="/" class="text-white text-decoration-none">
+                    <i class="fas fa-arrow-left"></i> Asosiy saytga qaytish
                 </a>
-                
-                <button class="btn btn-info" onclick="openTelegramBot()">
-                    <i class="fab fa-telegram"></i> Telegram Bot
-                </button>
-                
-                <button class="btn btn-primary" onclick="checkStatus()">
-                    <i class="fas fa-sync-alt"></i> Tekshirish
-                </button>
-            </div>
-            
-            <div class="mt-4 text-center">
-                <small class="text-muted">
-                    <i class="fas fa-clock"></i>
-                    Bu kod 5 daqiqada o'z kuchini yo'qotadi
-                </small>
             </div>
         </div>
     </div>
@@ -119,12 +186,47 @@
                 if (data.status === 'confirmed') {
                     // Login tasdiqlandi - dashboard'ga redirect
                     clearInterval(checkInterval);
-                    window.location.href = data.redirect;
+                    
+                    // Success animatsiyasi
+                    const loginCard = document.querySelector('.login-card');
+                    loginCard.style.background = 'linear-gradient(135deg, #28a745, #20c997)';
+                    loginCard.style.color = 'white';
+                    loginCard.innerHTML = `
+                        <div class="text-center p-5">
+                            <div style="font-size: 4rem; color: white; margin-bottom: 1rem;">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <h2>Tasdiqlandi!</h2>
+                            <p>Dashboard'ga yo'naltirilmoqda...</p>
+                        </div>
+                    `;
+                    
+                    setTimeout(() => {
+                        window.location.href = data.redirect;
+                    }, 2000);
+                    
                 } else if (data.status === 'denied') {
                     // Login rad etildi
                     clearInterval(checkInterval);
-                    alert('Login rad etildi va qurilma bloklandi');
-                    window.location.href = '/admin/login';
+                    
+                    // Error animatsiyasi
+                    const loginCard = document.querySelector('.login-card');
+                    loginCard.style.background = 'linear-gradient(135deg, #dc3545, #c82333)';
+                    loginCard.style.color = 'white';
+                    loginCard.innerHTML = `
+                        <div class="text-center p-5">
+                            <div style="font-size: 4rem; color: white; margin-bottom: 1rem;">
+                                <i class="fas fa-times-circle"></i>
+                            </div>
+                            <h2>Rad etildi!</h2>
+                            <p>Qurilma bloklandi. Login sahifasiga qaytilmoqda...</p>
+                        </div>
+                    `;
+                    
+                    setTimeout(() => {
+                        window.location.href = '/admin/login';
+                    }, 3000);
+                    
                 } else if (data.status === 'pending') {
                     // Hali kutilmoqda
                     console.log('Hali kutilmoqda...');
@@ -150,6 +252,16 @@
         function openTelegramBot() {
             window.open('https://t.me/twoauthjavodevbot', '_blank');
         }
+        
+        // Sahifa tark etilganda interval ni tozalash
+        window.addEventListener('beforeunload', function() {
+            if (checkInterval) {
+                clearInterval(checkInterval);
+            }
+        });
     </script>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

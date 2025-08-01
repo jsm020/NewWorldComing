@@ -12,6 +12,7 @@ from typing import Optional, List
 import os
 
 from app.models.user import User, UserCreateIn, UserUpdateIn
+from app.models.admin_security import AdminSecurity, DeviceBlock, PendingVerification, LoginAttempt
 from app.core.security import SecurityUtils, get_current_user
 from app.core.utils import ResponseFormatter
 from app.admin.registry import admin_registry
@@ -92,8 +93,7 @@ async def admin_login(
     user_agent = request.headers.get("user-agent", "Unknown")
     
     try:
-        # 2FA modellarini import qilish
-        from app.models.admin_security import AdminSecurity, DeviceBlock
+        # Telegram service import qilish
         from app.services.telegram_bot import get_telegram_service
         
         # Device block tekshirish (vaqt tekshiruvisiz)
@@ -109,11 +109,11 @@ async def admin_login(
                 {"request": request, "error": "Bu qurilma bloklangan"}
             )
         
-        # 2FA tekshirish - qayta yoqamiz
+        # 2FA tekshirish - har safar so'rash
         admin_security = await AdminSecurity.get_or_none(user=user)
         
-        if admin_security and admin_security.telegram_enabled and admin_security.require_confirmation:
-            # 2FA talab qilinadi
+        if admin_security and admin_security.telegram_enabled:
+            # 2FA yoqilgan bo'lsa, har safar so'raydi
             telegram_service = await get_telegram_service(user.id)
             
             if telegram_service:
@@ -167,8 +167,6 @@ async def verify_2fa(
 ):
     """Two Factor Authentication verification check."""
     try:
-        from app.models.admin_security import PendingVerification, LoginAttempt
-        
         # Verification topish
         verification = await PendingVerification.get_or_none(
             verification_code=verification_code,
